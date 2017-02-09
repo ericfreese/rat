@@ -1,0 +1,67 @@
+mode git.log
+  annotate match git.commit -- git rev-list --all --reflog --abbrev=2 --abbrev-commit
+  annotate match git.ref    -- git for-each-ref --format='%(refname)%0a%(refname:short)'
+
+  bindkey enter git.commit git.show -- >git show --stat=400 -p %(git.commit)
+  bindkey S-r   git.commit          -- ?!git rebase --interactive %(git.commit)
+  bindkey S-f   git.commit          -- ?!git commit --fixup=%(git.commit)
+
+  bindkey b git.commit git.blame -- >git blame %(git.commit) -- "%(git.filename)"
+  bindkey d git.commit git.diff  -- >git log -p --follow -1 %(git.commit) -- "%(git.filename)"
+end
+
+mode git.show
+  annotate match git.filename -- git ls-tree --name-only -r %(git.commit)
+
+  bindkey enter git.filename git.diff   -- >git log -p --follow -1 %(git.commit) -- "%(git.filename)"
+  bindkey b     git.filename git.blame  -- >git blame %(git.commit) -- "%(git.filename)"
+  bindkey l     git.filename git.log    -- >git log --follow %(git.commit) -- "%(git.filename)"
+  bindkey v     git.filename git.source -- >git show %(git.commit):"%(git.filename)"
+end
+
+mode git.blame
+  annotate match git.commit -- git log --abbrev=2 --pretty="%h" --follow -- "%(git.filename)"
+
+  bindkey enter git.commit git.show  -- >git show --stat=400 -p %(git.commit)
+  bindkey b     git.commit git.blame -- >git blame %(git.commit) -- "%(git.filename)"
+  bindkey S-b   git.commit git.blame -- >git blame %(git.commit)~ -- "%(git.filename)"
+end
+
+mode git.diff
+  annotate match git.filename -- git ls-tree --name-only -r %(git.commit)
+
+  bindkey b git.filename git.blame -- >git blame %(git.commit) -- "%(git.filename)"
+  bindkey l git.filename git.log   -- >git log %(git.commit) -- "%(git.filename)"
+end
+
+mode git.refs
+  annotate match git.ref -- git for-each-ref --format='%(refname:short)'
+
+  bindkey f                      -- !git fetch
+  bindkey S-f                    -- !git fetch --all
+  bindkey enter  git.ref git.log -- >git log %(git.ref)
+  bindkey c      git.ref         -- !git checkout %(git.ref)
+  bindkey r      git.ref         -- !git rebase %(git.ref)
+  bindkey m      git.ref         -- !git merge %(git.ref)
+  bindkey d      git.ref         -- !git branch -d %(git.ref)
+  bindkey delete git.ref         -- ?!git merge %(git.ref)
+end
+
+mode git.source
+end
+
+mode git.misc
+  annotate match git.commit   -- git rev-list --all --reflog --abbrev=2 --abbrev-commit
+  annotate match git.filename -- git ls-files
+  annotate match git.ref      -- git for-each-ref --format='%(refname)%0a%(refname:short)'
+
+  bindkey s   git.commit   git.show   -- >git show --stat=400 -p %(git.commit)
+  bindkey v   git.filename git.source -- >cat "%(git.filename)"
+  bindkey b   git.filename git.blame  -- >git blame -- "%(git.filename)"
+  bindkey l   git.ref      git.log    -- >git log %(git.ref)
+  bindkey S-r git.commit              -- ?!git rebase --interactive %(git.commit)
+  bindkey S-f git.commit              -- ?!git commit --fixup=%(git.commit)
+end
+
+bindkey C-b git.refs -- git branch --all -v --sort=-committerdate
+bindkey C-l git.log  -- git log
