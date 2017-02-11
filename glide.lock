@@ -1,0 +1,14 @@
+hash: c3171def92311862741cbac05d9ea55cd168f8babfe470a8daf8c6f87190423f
+updated: 2017-02-10T17:22:48.982682473-07:00
+imports:
+- name: github.com/ericfreese/escseq
+  version: 86cde6b4489748309d9254edf5918d7202021647
+- name: github.com/MathieuTurcotte/go-trie
+  version: 907bb848563c1ffb323c7cd2edd747dcaf58a2c3
+  subpackages:
+  - gtrie
+- name: github.com/mattn/go-runewidth
+  version: 14207d285c6c197daabb5c9793d63e7af9ab2d50
+- name: github.com/nsf/termbox-go
+  version: abe82ce5fb7a42fbd6784a5ceb71aff977e09ed8
+testImports: []
