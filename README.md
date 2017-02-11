@@ -2,6 +2,8 @@
 
 _Compose shell commands to build terminal applications_
 
+[![GoDoc](https://godoc.org/github.com/ericfreese/rat?status.svg)](https://godoc.org/github.com/ericfreese/rat)
+
 ![](demo.gif)
 
 ## Overview
