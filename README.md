@@ -80,6 +80,12 @@ AddEventListener("2", func() { pagers.Show(2) })
 AddEventListener("3", func() { pagers.Show(3) })
 ```
 
+## Development
+
+### Dependencies
+
+Dependencies are managed using [`glide`](https://github.com/Masterminds/glide).
+
 ## License
 
 This project is licensed under [MIT license](http://opensource.org/licenses/MIT). For the full text of the license, see the [LICENSE](LICENSE) file.
