@@ -2,6 +2,7 @@ package rat
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ericfreese/rat/cmd"
 	termbox "github.com/nsf/termbox-go"
@@ -24,7 +25,7 @@ type cmdPager struct {
 	contentBox Box
 }
 
-func NewCmdPager(modeName string, cmd string, ctx Context) Pager {
+func NewCmdPager(modeNames string, cmd string, ctx Context) Pager {
 	p := &cmdPager{}
 
 	p.cmd = cmd
@@ -35,16 +36,35 @@ func NewCmdPager(modeName string, cmd string, ctx Context) Pager {
 
 	p.addDefaultListeners()
 
-	if mode, ok := modes[modeName]; ok {
-		p.initParsers = mode.InitParsers(ctx)
-		mode.AddEventListeners(ctx)(p)
-	} else {
-		p.initParsers = func() []Annotator { return []Annotator{} }
-	}
+	p.initModes(strings.Split(modeNames, ","))
 
 	p.RunCommand()
 
 	return p
+}
+
+func (p *cmdPager) initModes(modeNames []string) {
+	pagerModes := make([]Mode, 0, len(modeNames))
+
+	for _, modeName := range modeNames {
+		if mode, ok := modes[modeName]; ok {
+			pagerModes = append(pagerModes, mode)
+		}
+	}
+
+	p.initParsers = func() []Annotator {
+		annotators := make([]Annotator, 0, 8)
+
+		for _, mode := range pagerModes {
+			annotators = append(annotators, mode.InitParsers(p.ctx)()...)
+		}
+
+		return annotators
+	}
+
+	for _, mode := range pagerModes {
+		mode.AddEventListeners(p.ctx)(p)
+	}
 }
 
 func (p *cmdPager) AddEventListener(keyStr string, handler func()) {
