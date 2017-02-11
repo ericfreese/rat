@@ -107,7 +107,7 @@ func (c *configurer) ProcessModeAnnotate(mode Mode, args []string) {
 	}
 
 	mode.RegisterAnnotator(func(ctx Context) Annotator {
-		return NewMatchParser(
+		return NewMatchAnnotator(
 			InterpolateContext(args[2], ctx),
 			args[1],
 		)

@@ -11,25 +11,25 @@ import (
 	"github.com/MathieuTurcotte/go-trie/gtrie"
 )
 
-type matchParser struct {
+type matchAnnotator struct {
 	class    string
 	trieRoot *gtrie.Node
 	loading  chan bool
 }
 
-func NewMatchParser(cmd, class string) Annotator {
-	mp := &matchParser{}
+func NewMatchAnnotator(cmd, class string) Annotator {
+	ma := &matchAnnotator{}
 
-	mp.class = class
-	mp.loading = make(chan bool)
+	ma.class = class
+	ma.loading = make(chan bool)
 
-	go mp.loadMatches(cmd)
+	go ma.loadMatches(cmd)
 
-	return mp
+	return ma
 }
 
-func (mp *matchParser) loadMatches(cmd string) {
-	defer close(mp.loading)
+func (ma *matchAnnotator) loadMatches(cmd string) {
+	defer close(ma.loading)
 
 	command := exec.Command(os.Getenv("SHELL"), "-c", cmd)
 	output, _ := command.Output()
@@ -46,11 +46,11 @@ func (mp *matchParser) loadMatches(cmd string) {
 
 	if len(matchStrings) > 0 {
 		sort.Strings(matchStrings)
-		mp.trieRoot, _ = gtrie.Create(matchStrings)
+		ma.trieRoot, _ = gtrie.Create(matchStrings)
 	}
 }
 
-func (mp *matchParser) Annotate(reader BufferReader) <-chan Annotation {
+func (ma *matchAnnotator) Annotate(reader BufferReader) <-chan Annotation {
 	out := make(chan Annotation)
 
 	go func() {
@@ -65,13 +65,13 @@ func (mp *matchParser) Annotate(reader BufferReader) <-chan Annotation {
 			cursor *gtrie.Node
 		)
 
-		<-mp.loading
+		<-ma.loading
 
-		if mp.trieRoot == nil {
+		if ma.trieRoot == nil {
 			return
 		}
 
-		cursor = mp.trieRoot
+		cursor = ma.trieRoot
 
 		for {
 			pr, err = reader.ReadPositionedRune()
@@ -89,14 +89,14 @@ func (mp *matchParser) Annotate(reader BufferReader) <-chan Annotation {
 				}
 
 				if cursor.Terminal {
-					out <- NewAnnotation(start, pr.Pos(), mp.class, buf.String())
+					out <- NewAnnotation(start, pr.Pos(), ma.class, buf.String())
 				} else {
 					continue
 				}
 			}
 
 			buf.Reset()
-			cursor = mp.trieRoot
+			cursor = ma.trieRoot
 			start = nil
 		}
 	}()
