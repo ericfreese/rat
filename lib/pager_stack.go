@@ -1,6 +1,17 @@
 package rat
 
-import termbox "github.com/nsf/termbox-go"
+type PagerStack interface {
+	Widget
+	AddEventListener(string, func())
+	Show(int)
+	Push(p Pager)
+	Pop()
+	Size() int
+	AddChild(parent Pager, child Pager, creatingKey string)
+	PushAsChild(Pager, string)
+	ParentCursorUp()
+	ParentCursorDown()
+}
 
 type pagerStack struct {
 	lastEl         *pagerStackElement
@@ -132,14 +143,14 @@ func (ps *pagerStack) GetBox() Box {
 }
 
 func (ps *pagerStack) drawVerticalDivider(offset int) {
-	sr := NewStyledRune('│', termbox.ColorDefault, termbox.ColorDefault)
+	sr := NewStyledRune('│', gTermStyles.Default())
 	for y := 0; y < ps.box.Height(); y++ {
 		ps.box.DrawStyledRune(offset, y, sr)
 	}
 }
 
 func (ps *pagerStack) drawHorizontalDivider(offset int) {
-	sr := NewStyledRune('─', termbox.ColorDefault, termbox.ColorDefault)
+	sr := NewStyledRune('─', gTermStyles.Default())
 	for x := 0; x < ps.box.Width(); x++ {
 		ps.box.DrawStyledRune(x, offset, sr)
 	}

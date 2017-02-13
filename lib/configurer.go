@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+type Configurer interface {
+	Process(rd io.Reader)
+}
+
 type configurer struct {
 }
 

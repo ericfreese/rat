@@ -1,5 +1,12 @@
 package rat
 
+type Mode interface {
+	RegisterAnnotator(func(Context) Annotator)
+	RegisterEventListener(func(Context) func(Pager))
+	InitAnnotators(Context) func() []Annotator
+	AddEventListeners(Context) func(Pager)
+}
+
 type mode struct {
 	annotatorCtors      []func(Context) Annotator
 	eventListenerAdders []func(Context) func(Pager)
@@ -14,7 +21,7 @@ func NewMode() Mode {
 	return m
 }
 
-func (m *mode) InitParsers(ctx Context) func() []Annotator {
+func (m *mode) InitAnnotators(ctx Context) func() []Annotator {
 	return func() []Annotator {
 		annotators := make([]Annotator, 0, len(m.annotatorCtors))
 

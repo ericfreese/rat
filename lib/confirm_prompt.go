@@ -7,6 +7,12 @@ import (
 	termbox "github.com/nsf/termbox-go"
 )
 
+type ConfirmPrompt interface {
+	Widget
+	Confirm(message string, callback func())
+	Clear()
+}
+
 type confirmPrompt struct {
 	message  string
 	callback func()
@@ -38,7 +44,7 @@ func (cp *confirmPrompt) GetBox() Box {
 }
 
 func (cp *confirmPrompt) Render() {
-	cp.box.DrawStyledRunes(1, 0, StyledRunesFromString(cp.message, termbox.ColorGreen, termbox.ColorDefault))
+	cp.box.DrawStyledRunes(1, 0, StyledRunesFromString(cp.message, gTermStyles.Get(termbox.ColorGreen, termbox.ColorDefault)))
 }
 
 func (cp *confirmPrompt) HandleEvent(ke keyEvent) bool {
