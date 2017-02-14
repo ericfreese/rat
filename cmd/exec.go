@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"syscall"
 )
 
 type ReadKiller interface {
@@ -27,6 +28,7 @@ func Exec(command string) (ReadKiller, error) {
 	r = &readKiller{}
 
 	r.cmd = exec.Command(os.Getenv("SHELL"), "-c", command)
+	r.cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	if stdout, err = r.cmd.StdoutPipe(); err != nil {
 		return r, err
@@ -40,11 +42,6 @@ func Exec(command string) (ReadKiller, error) {
 
 	err = r.cmd.Start()
 
-	// TODO: Figure out WTF is going on here and why this is necessary
-	// to avoid leaking processes
-	go func() {
-		r.cmd.Process.Wait()
-	}()
 
 	return r, err
 }
@@ -54,5 +51,5 @@ func (r *readKiller) Read(p []byte) (int, error) {
 }
 
 func (r *readKiller) Kill() error {
-	return r.cmd.Process.Kill()
+	return syscall.Kill(-r.cmd.Process.Pid, syscall.SIGTERM)
 }
