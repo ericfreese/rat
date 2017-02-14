@@ -207,7 +207,7 @@ loop:
 			case termbox.EventResize:
 				layout(e.Width, e.Height)
 			}
-		case <-time.After(time.Second / 60):
+		case <-time.After(time.Second / 10):
 		}
 	}
 
