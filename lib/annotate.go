@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -181,6 +183,36 @@ func (ma *matchAnnotator) Annotate(rd io.Reader) <-chan Annotation {
 			buf.Reset()
 			cursor = ma.trieRoot
 			start = -1
+		}
+	}()
+
+	return out
+}
+
+type regexAnnotator struct {
+	class string
+	regex *regexp.Regexp
+}
+
+func NewRegexAnnotator(regex, class string) Annotator {
+	ra := &regexAnnotator{}
+
+	ra.class = class
+	ra.regex = regexp.MustCompile(regex)
+
+	return ra
+}
+
+func (ra *regexAnnotator) Annotate(rd io.Reader) <-chan Annotation {
+	out := make(chan Annotation)
+
+	go func() {
+		defer close(out)
+
+		if bytes, err := ioutil.ReadAll(rd); err == nil {
+			for _, match := range ra.regex.FindAllIndex(bytes, -1) {
+				out <- NewAnnotation(match[0], match[1], ra.class, string(bytes[match[0]:match[1]]))
+			}
 		}
 	}()
 

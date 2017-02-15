@@ -106,16 +106,24 @@ func (c *configurer) ProcessModeAnnotate(mode Mode, args []string) {
 		panic("Expected 3 args for 'annotate'")
 	}
 
-	if args[0] != "match" {
-		panic("Annotation type must be 'match'")
+	switch args[0] {
+	case "match":
+		mode.RegisterAnnotator(func(ctx Context) Annotator {
+			return NewMatchAnnotator(
+				InterpolateContext(args[2], ctx),
+				args[1],
+			)
+		})
+	case "regex":
+		mode.RegisterAnnotator(func(ctx Context) Annotator {
+			return NewRegexAnnotator(
+				InterpolateContext(args[2], ctx),
+				args[1],
+			)
+		})
+	default:
+		panic(fmt.Sprintf("Unknown annotation type: '%s'", args[0]))
 	}
-
-	mode.RegisterAnnotator(func(ctx Context) Annotator {
-		return NewMatchAnnotator(
-			InterpolateContext(args[2], ctx),
-			args[1],
-		)
-	})
 }
 
 func (c *configurer) ProcessModeBindkey(mode Mode, args []string) {
