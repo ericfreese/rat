@@ -1,5 +1,20 @@
 package rat
 
+type Widget interface {
+	SetBox(Box)
+	GetBox() Box
+	Render()
+	HandleEvent(keyEvent) bool
+	Destroy()
+}
+
+type WidgetStack interface {
+	Widget
+	Push(w Widget)
+	Pop() Widget
+	Size() int
+}
+
 type widgetStack struct {
 	lastEl *widgetStackElement
 	box    Box

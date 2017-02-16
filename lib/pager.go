@@ -2,16 +2,31 @@ package rat
 
 import (
 	"fmt"
+	"strings"
 
-	"github.com/ericfreese/rat/cmd"
 	termbox "github.com/nsf/termbox-go"
 )
 
+type Pager interface {
+	Widget
+	AddEventListener(keyStr string, handler func())
+	AddAnnotationEventListener(keyStr string, annotationTypes []string, handler func(Context))
+	Reload()
+	CursorUp()
+	CursorDown()
+	CursorFirstLine()
+	CursorLastLine()
+	ScrollUp()
+	ScrollDown()
+	PageUp()
+	PageDown()
+}
+
 type cmdPager struct {
+	modes                    []Mode
 	cmd                      string
 	ctx                      Context
-	command                  cmd.ReadKiller
-	initParsers              func() []Annotator
+	command                  ShellCommand
 	buffer                   Buffer
 	scrollOffsetY            int
 	cursorY                  int
@@ -24,7 +39,7 @@ type cmdPager struct {
 	contentBox Box
 }
 
-func NewCmdPager(modeName string, cmd string, ctx Context) Pager {
+func NewCmdPager(modeNames string, cmd string, ctx Context) Pager {
 	p := &cmdPager{}
 
 	p.cmd = cmd
@@ -35,11 +50,15 @@ func NewCmdPager(modeName string, cmd string, ctx Context) Pager {
 
 	p.addDefaultListeners()
 
-	if mode, ok := modes[modeName]; ok {
-		p.initParsers = mode.InitParsers(ctx)
-		mode.AddEventListeners(ctx)(p)
-	} else {
-		p.initParsers = func() []Annotator { return []Annotator{} }
+	splitModeNames := strings.Split(modeNames, ",")
+	p.modes = make([]Mode, 0, len(splitModeNames))
+
+	for _, modeName := range splitModeNames {
+		if mode, ok := modes[modeName]; ok {
+			p.modes = append(p.modes, mode)
+
+			mode.AddEventListeners(ctx)(p)
+		}
 	}
 
 	p.RunCommand()
@@ -68,8 +87,8 @@ func (p *cmdPager) Destroy() {
 }
 
 func (p *cmdPager) Stop() {
-	p.command.Kill()
-	p.buffer.Destroy()
+	p.command.Close()
+	p.buffer.Close()
 }
 
 func (p *cmdPager) Reload() {
@@ -80,11 +99,17 @@ func (p *cmdPager) Reload() {
 func (p *cmdPager) RunCommand() {
 	var err error
 
-	if p.command, err = cmd.Exec(p.InterpolatedCmd()); err != nil {
+	if p.command, err = NewShellCommand(p.InterpolatedCmd()); err != nil {
 		panic(err)
 	}
 
-	p.buffer = NewBuffer(NewStyledRuneReader(p.command), p.initParsers)
+	p.buffer = NewBuffer(p.command)
+
+	for _, m := range p.modes {
+		for _, a := range m.InitAnnotators(p.ctx)() {
+			go p.buffer.AnnotateWith(a)
+		}
+	}
 }
 
 func (p *cmdPager) HandleEvent(ke keyEvent) bool {
@@ -124,17 +149,17 @@ func (p *cmdPager) layout() {
 }
 
 func (p *cmdPager) drawHeader() {
-	p.headerBox.DrawStyledRunes(1, 0, StyledRunesFromString(p.InterpolatedCmd(), termbox.AttrUnderline, termbox.ColorDefault))
+	p.headerBox.DrawStyledRunes(1, 0, StyledRunesFromString(p.InterpolatedCmd(), gTermStyles.Get(termbox.AttrUnderline, termbox.ColorDefault)))
 
-	pagerInfo := StyledRunesFromString(fmt.Sprintf(" %d %d/%d ", p.buffer.NumAnnotations(), p.cursorY, p.buffer.NumLines()-1), termbox.AttrBold, termbox.ColorDefault)
+	pagerInfo := StyledRunesFromString(fmt.Sprintf(" %d %d/%d ", p.buffer.NumAnnotations(), p.cursorY+1, p.buffer.NumLines()), gTermStyles.Get(termbox.AttrBold, termbox.ColorDefault))
 	p.headerBox.DrawStyledRunes(p.headerBox.Width()-len(pagerInfo), 0, pagerInfo)
 }
 
 func (p *cmdPager) drawContent() {
-	p.contentBox.DrawStyledRune(1, p.cursorY-p.scrollOffsetY, NewStyledRune('▶', termbox.ColorRed, termbox.ColorDefault))
+	p.contentBox.DrawStyledRune(1, p.cursorY-p.scrollOffsetY, NewStyledRune('▶', gTermStyles.Get(termbox.ColorRed, termbox.ColorDefault)))
 
-	for y, line := range p.buffer.LineRange(p.scrollOffsetY, p.contentBox.Height()) {
-		p.contentBox.DrawStyledRunes(3, y, line)
+	for y, line := range p.buffer.StyledLines(p.scrollOffsetY, p.contentBox.Height()) {
+		p.contentBox.DrawStyledRunes(3, y, []StyledRune(line))
 	}
 }
 

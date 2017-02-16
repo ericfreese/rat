@@ -10,124 +10,6 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
-type Annotation interface {
-	Start() BufferPoint
-	End() BufferPoint
-	Class() string
-	Val() string
-}
-
-type Annotator interface {
-	Annotate(BufferReader) <-chan Annotation
-}
-
-type Box interface {
-	Left() int
-	Top() int
-	Width() int
-	Height() int
-	DrawStyledRune(x, y int, sr StyledRune)
-	DrawStyledRunes(x, y int, runes []StyledRune)
-	Fill(sr StyledRune)
-}
-
-type Buffer interface {
-	LineRange(start int, numLines int) [][]StyledRune
-	NumLines() int
-	NumAnnotations() int
-	AnnotationsForLine(line int) []Annotation
-	Destroy()
-	Lock()
-	Unlock()
-	NextPositionedRune(bp BufferPoint) (PositionedRune, error)
-}
-
-type BufferPoint interface {
-	Line() int
-	Col() int
-}
-
-type BufferReader interface {
-	ReadPositionedRune() (PositionedRune, error)
-}
-
-type Configurer interface {
-	Process(rd io.Reader)
-}
-
-type ConfirmPrompt interface {
-	Widget
-	Confirm(message string, callback func())
-	Clear()
-}
-
-type Context map[string]string
-
-type Mode interface {
-	RegisterAnnotator(func(Context) Annotator)
-	RegisterEventListener(func(Context) func(Pager))
-	InitParsers(Context) func() []Annotator
-	AddEventListeners(Context) func(Pager)
-}
-
-type Pager interface {
-	Widget
-	AddEventListener(keyStr string, handler func())
-	AddAnnotationEventListener(keyStr string, annotationTypes []string, handler func(Context))
-	Reload()
-	CursorUp()
-	CursorDown()
-	CursorFirstLine()
-	CursorLastLine()
-	ScrollUp()
-	ScrollDown()
-	PageUp()
-	PageDown()
-}
-
-type PagerStack interface {
-	Widget
-	AddEventListener(string, func())
-	Show(int)
-	Push(p Pager)
-	Pop()
-	Size() int
-	AddChild(parent Pager, child Pager, creatingKey string)
-	PushAsChild(Pager, string)
-	ParentCursorUp()
-	ParentCursorDown()
-}
-
-type PositionedRune interface {
-	Pos() BufferPoint
-	Rune() rune
-}
-
-type StyledRune interface {
-	Fg() termbox.Attribute
-	Bg() termbox.Attribute
-	Rune() rune
-}
-
-type StyledRuneReader interface {
-	ReadStyledRune() (StyledRune, error)
-}
-
-type Widget interface {
-	SetBox(Box)
-	GetBox() Box
-	Render()
-	HandleEvent(keyEvent) bool
-	Destroy()
-}
-
-type WidgetStack interface {
-	Widget
-	Push(w Widget)
-	Pop() Widget
-	Size() int
-}
-
 var (
 	events         chan termbox.Event
 	done           chan bool
@@ -207,7 +89,7 @@ loop:
 			case termbox.EventResize:
 				layout(e.Width, e.Height)
 			}
-		case <-time.After(time.Second / 60):
+		case <-time.After(time.Second / 10):
 		}
 	}
 

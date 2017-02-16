@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+type Context map[string]string
+
 func InterpolateContext(str string, ctx Context) string {
 	for k, v := range ctx {
 		str = strings.Replace(str, fmt.Sprintf("%%(%s)", k), v, -1)

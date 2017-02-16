@@ -2,6 +2,16 @@ package rat
 
 import termbox "github.com/nsf/termbox-go"
 
+type Box interface {
+	Left() int
+	Top() int
+	Width() int
+	Height() int
+	DrawStyledRune(x, y int, sr StyledRune)
+	DrawStyledRunes(x, y int, runes []StyledRune)
+	Fill(sr StyledRune)
+}
+
 type box struct {
 	left   int
 	top    int

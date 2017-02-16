@@ -1,188 +1,164 @@
 package rat
 
 import (
+	"bufio"
 	"io"
 	"sync"
-	"unicode/utf8"
+
+	termbox "github.com/nsf/termbox-go"
 )
 
-type buffer struct {
-	lines           [][]StyledRune
-	annotations     []Annotation
-	appendListeners []chan PositionedRune
-	appendLock      sync.Mutex
-	annotationLock  sync.Mutex
-	stopped         chan bool
-	finished        bool
+type Buffer interface {
+	sync.Locker
+	AnnotateWith(Annotator)
+	AnnotationsForLine(line int) []Annotation
+	NumAnnotations() int
+	NumLines() int
+	StyledLines(start int, numLines int) [][]StyledRune
+	io.Closer
 }
 
-func NewBuffer(srr StyledRuneReader, initParsers func() []Annotator) Buffer {
+type buffer struct {
+	stream      Stream
+	highlights  Highlights
+	annotations Annotations
+	lines       []Line
+
+	sync.Mutex
+}
+
+func NewBuffer(rd io.Reader) Buffer {
 	b := &buffer{}
 
-	b.lines = append(make([][]StyledRune, 0, 256), make([]StyledRune, 0, 128))
-	b.appendListeners = make([]chan PositionedRune, 0, 16)
-	b.stopped = make(chan bool)
+	b.stream = NewStream()
+	b.highlights = NewHighlights()
+	b.annotations = NewAnnotations()
+	b.lines = make([]Line, 1, 64)
+	b.lines[0] = NewLine(0, 0)
 
-	go b.appendFrom(srr)
-
-	for _, ap := range initParsers() {
-		go b.annotateWith(ap)
-	}
+	go b.processTokens(NewScanner(rd))
 
 	return b
 }
 
-func (b *buffer) LineRange(start int, numLines int) [][]StyledRune {
-	if start > len(b.lines)-1 {
-		return nil
-	} else if start+numLines < len(b.lines) {
-		return b.lines[start : start+numLines]
-	} else {
-		return b.lines[start:]
+func (b *buffer) AnnotateWith(annotator Annotator) {
+	for a := range annotator.Annotate(b.stream.NewReader()) {
+		b.Lock()
+		b.annotations.Add(a)
+		b.Unlock()
 	}
+}
+
+func (b *buffer) AnnotationsForLine(l int) []Annotation {
+	if l < 0 {
+		panic("invalid line index")
+	}
+
+	if l >= len(b.lines) {
+		return []Annotation{}
+	}
+
+	return b.annotations.Intersecting(b.lines[l])
+}
+
+func (b *buffer) NumAnnotations() int {
+	return b.annotations.Len()
 }
 
 func (b *buffer) NumLines() int {
 	return len(b.lines)
 }
 
-func (b *buffer) NumAnnotations() int {
-	return len(b.annotations)
-}
-
-func (b *buffer) AnnotationsForLine(line int) []Annotation {
-	annotations := make([]Annotation, 0, 8)
-
-	for _, a := range b.annotations {
-		if a.Start().Line() <= line && a.End().Line() >= line {
-			annotations = append(annotations, a)
-		}
+func (b *buffer) StyledLines(start, numLines int) [][]StyledRune {
+	if start < 0 {
+		panic("invalid line index")
 	}
 
-	return annotations
-}
-
-func (b *buffer) stop() {
-	select {
-	case <-b.stopped:
-	default:
-		close(b.stopped)
+	if start >= len(b.lines) {
+		numLines = 0
+	} else if start+numLines > len(b.lines) {
+		numLines = len(b.lines) - start
 	}
-}
 
-func (b *buffer) Destroy() {
-	b.stop()
-}
+	styledLines := make([][]StyledRune, 0, numLines)
 
-func (b *buffer) Lock() {
-	b.appendLock.Lock()
-	b.annotationLock.Lock()
-}
-
-func (b *buffer) Unlock() {
-	b.appendLock.Unlock()
-	b.annotationLock.Unlock()
-}
-
-func (b *buffer) NextPositionedRune(bp BufferPoint) (PositionedRune, error) {
-	var line, col int
-	var next BufferPoint
-
-	if bp == nil {
-		line = 0
-		col = -1
+	var lines []Line
+	if numLines > 0 {
+		lines = b.lines[start : start+numLines]
 	} else {
-		line = bp.Line()
-		col = bp.Col()
+		lines = make([]Line, 0, 0)
 	}
 
-	b.appendLock.Lock()
+	for i, line := range lines {
+		lineString := string(b.stream.Bytes()[line.Start():line.End()])
 
-	if col+1 < len(b.lines[line]) {
-		next = NewBufferPoint(line, col+1)
-	} else if line+1 < len(b.lines) && len(b.lines[line+1]) > 0 {
-		next = NewBufferPoint(line+1, 0)
-	}
+		styledLines = append(styledLines, make([]StyledRune, 0, len(lineString)))
 
-	if next != nil {
-		defer b.appendLock.Unlock()
-		return NewPositionedRune(b.lines[next.Line()][next.Col()].Rune(), next), nil
-	} else {
-		select {
-		case <-b.stopped:
-			b.appendLock.Unlock()
-			return nil, io.EOF
-		default:
-			nextAppend := make(chan PositionedRune, 1)
-			b.appendListeners = append(b.appendListeners, nextAppend)
-			b.appendLock.Unlock()
-
-			if pr, ok := <-nextAppend; ok {
-				close(nextAppend)
-				return pr, nil
+		offset := line.Start()
+		var sr StyledRune
+		for _, r := range lineString {
+			if h := b.highlights.AtPoint(offset); h != nil {
+				sr = NewStyledRune(r, h)
 			} else {
-				return nil, io.EOF
+				sr = NewStyledRune(r, gTermStyles.Default())
 			}
+
+			styledLines[i] = append(styledLines[i], sr)
+
+			offset = offset + len(string(r))
 		}
 	}
+
+	return styledLines
 }
 
-func (b *buffer) annotateWith(ap Annotator) {
-	for a := range ap.Annotate(NewBufferReader(b)) {
-		b.annotationLock.Lock()
-		b.annotations = append(b.annotations, a)
-		b.annotationLock.Unlock()
-	}
+func (b *buffer) Close() error {
+	return b.stream.Close()
 }
 
-func (b *buffer) appendFrom(srr StyledRuneReader) {
+func (b *buffer) processTokens(tr TokenReader) {
+	w := bufio.NewWriter(b.stream)
+
+	var (
+		offset int
+		t      Token
+		err    error
+		n      int
+	)
+
 	for {
-		select {
-		case <-b.stopped:
-			return
-		default:
-			sr, err := srr.ReadStyledRune()
+		t, err = tr.ReadToken()
+		if err != nil {
+			break
+		}
 
-			if sr.Rune() != utf8.RuneError {
-				b.append(sr)
-			}
+		b.Lock()
 
-			if err != nil {
-				b.appendLock.Lock()
-				defer b.appendLock.Unlock()
+		if len(t.Val()) > 0 {
+			n, err = w.WriteString(string(t.Val()))
+			w.Flush()
 
-				for _, l := range b.appendListeners {
-					close(l)
-				}
+			offset = offset + n
 
-				b.stop()
+			b.lines[len(b.lines)-1].SetEnd(offset)
+		}
 
-				return
+		if t.Type() == TokTermStyle {
+			sp := t.TermStyle()
+
+			b.highlights.End(offset)
+
+			if sp.Fg() != termbox.ColorDefault || sp.Bg() != termbox.ColorDefault {
+				b.highlights.Start(offset, t.TermStyle())
 			}
 		}
 
-	}
-}
-
-func (b *buffer) append(sr StyledRune) {
-	b.appendLock.Lock()
-	defer b.appendLock.Unlock()
-
-	if len(b.appendListeners) > 0 {
-		curLine := len(b.lines) - 1
-		curCol := len(b.lines[curLine])
-		pr := NewPositionedRune(sr.Rune(), NewBufferPoint(curLine, curCol))
-
-		for _, l := range b.appendListeners {
-			l <- pr
+		if t.Type() == TokNewLine {
+			b.lines = append(b.lines, NewLine(b.lines[len(b.lines)-1].End(), offset))
 		}
 
-		b.appendListeners = b.appendListeners[0:0]
+		b.Unlock()
 	}
 
-	b.lines[len(b.lines)-1] = append(b.lines[len(b.lines)-1], sr)
-
-	if sr.Rune() == '\n' {
-		b.lines = append(b.lines, make([]StyledRune, 0, 128))
-	}
+	b.Close()
 }

@@ -1,38 +1,29 @@
 package rat
 
-// TODO: Decouple from termbox
-import (
-	"unicode/utf8"
+import "unicode/utf8"
 
-	"github.com/nsf/termbox-go"
-)
+type StyledRune interface {
+	Rune() rune
+	TermStyle
+}
 
 type styledRune struct {
 	ch rune
-	fg termbox.Attribute
-	bg termbox.Attribute
+	TermStyle
 }
 
-func NewStyledRune(ch rune, fg termbox.Attribute, bg termbox.Attribute) StyledRune {
-	return &styledRune{ch, fg, bg}
+func NewStyledRune(ch rune, ts TermStyle) StyledRune {
+	return &styledRune{ch, ts}
 }
 
-func StyledRunesFromString(str string, fg termbox.Attribute, bg termbox.Attribute) []StyledRune {
+func StyledRunesFromString(str string, ts TermStyle) []StyledRune {
 	runes := make([]StyledRune, 0, utf8.RuneCountInString(str))
 
 	for _, r := range str {
-		runes = append(runes, NewStyledRune(r, fg, bg))
+		runes = append(runes, NewStyledRune(r, ts))
 	}
 
 	return runes
-}
-
-func (sr *styledRune) Fg() termbox.Attribute {
-	return sr.fg
-}
-
-func (sr *styledRune) Bg() termbox.Attribute {
-	return sr.bg
 }
 
 func (sr *styledRune) Rune() rune {
