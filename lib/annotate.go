@@ -136,14 +136,15 @@ func (ma *matchAnnotator) Annotate(rd io.Reader) <-chan Annotation {
 		defer close(out)
 
 		var (
-			r      rune
-			size   int
-			err    error
-			offset int
-			start  int
-			buf    bytes.Buffer
-			next   *gtrie.Node
-			cursor *gtrie.Node
+			r         rune
+			size      int
+			err       error
+			offset    int
+			start     int
+			buf       bytes.Buffer
+			next      *gtrie.Node
+			cursor    *gtrie.Node
+			candidate Annotation
 		)
 
 		<-ma.loading
@@ -174,12 +175,20 @@ func (ma *matchAnnotator) Annotate(rd io.Reader) <-chan Annotation {
 				}
 
 				if cursor.Terminal {
-					out <- NewAnnotation(start, offset+size, ma.class, buf.String())
+					if cursor.HasChildren() {
+						candidate = NewAnnotation(start, offset+size, ma.class, buf.String())
+						continue
+					} else {
+						out <- NewAnnotation(start, offset+size, ma.class, buf.String())
+					}
 				} else {
 					continue
 				}
+			} else if candidate != nil {
+				out <- candidate
 			}
 
+			candidate = nil
 			buf.Reset()
 			cursor = ma.trieRoot
 			start = -1
