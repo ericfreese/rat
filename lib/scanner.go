@@ -148,7 +148,7 @@ func (s *scanner) buildTermStyle(sgr []int) TermStyle {
 		case p >= 30 && p <= 37:
 			s.fg = s.fg | termbox.Attribute(p-29)
 		case p == 38:
-			if n-i >= 2 && sgr[i+1] == 5 {
+			if n-i > 2 && sgr[i+1] == 5 {
 				s.fg = s.fg | termbox.Attribute(sgr[i+2]+1)
 				i = i + 2
 			}
@@ -157,7 +157,7 @@ func (s *scanner) buildTermStyle(sgr []int) TermStyle {
 		case p >= 40 && p <= 47:
 			s.bg = s.bg | termbox.Attribute(p-39)
 		case p == 48:
-			if n-i >= 2 && sgr[i+1] == 5 {
+			if n-i > 2 && sgr[i+1] == 5 {
 				s.bg = s.bg | termbox.Attribute(sgr[i+2]+1)
 				i = i + 2
 			}
