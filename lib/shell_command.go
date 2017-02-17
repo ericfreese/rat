@@ -44,6 +44,7 @@ func NewShellCommand(c string) (ShellCommand, error) {
 }
 
 func (sc *shellCommand) Close() error {
+	err := syscall.Kill(-sc.cmd.Process.Pid, syscall.SIGTERM)
 	sc.cmd.Wait()
-	return syscall.Kill(-sc.cmd.Process.Pid, syscall.SIGTERM)
+	return err
 }
