@@ -38,9 +38,12 @@ func NewShellCommand(c string) (ShellCommand, error) {
 
 	sc.Reader = io.MultiReader(stdout, stderr)
 
-	return sc, sc.cmd.Start()
+	err = sc.cmd.Start()
+
+	return sc, err
 }
 
 func (sc *shellCommand) Close() error {
+	sc.cmd.Wait()
 	return syscall.Kill(-sc.cmd.Process.Pid, syscall.SIGTERM)
 }
