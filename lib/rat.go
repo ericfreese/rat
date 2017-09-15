@@ -124,7 +124,10 @@ func ConfirmExec(cmd string, ctx Context, callback func()) {
 }
 
 func Exec(cmd string, ctx Context) {
-	exec.Command(os.Getenv("SHELL"), "-c", InterpolateContext(cmd, ctx)).Run()
+	c := exec.Command(os.Getenv("SHELL"), "-c", InterpolateContext(cmd, ctx))
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Run()
 }
 
 func RegisterMode(name string, mode Mode) {
