@@ -23,14 +23,9 @@ var (
 )
 
 func Init() error {
-	var err error
-
-	if err = termbox.Init(); err != nil {
+	if err := configTerminal(); err != nil {
 		return err
 	}
-
-	termbox.SetInputMode(termbox.InputAlt)
-	termbox.SetOutputMode(termbox.Output256)
 
 	events = make(chan termbox.Event)
 	widgets = NewWidgetStack()
@@ -51,6 +46,19 @@ func Init() error {
 
 	w, h := termbox.Size()
 	layout(w, h)
+
+	return nil
+}
+
+func configTerminal() error {
+	var err error
+
+	if err = termbox.Init(); err != nil {
+		return err
+	}
+
+	termbox.SetInputMode(termbox.InputAlt)
+	termbox.SetOutputMode(termbox.Output256)
 
 	return nil
 }
@@ -128,6 +136,8 @@ func Exec(cmd string, ctx Context) {
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Run()
+
+	configTerminal()
 }
 
 func RegisterMode(name string, mode Mode) {
