@@ -36,7 +36,11 @@ func main() {
 		panic(err)
 	}
 
-	if config, err := os.Open(filepath.Join(usr.HomeDir, ".ratrc")); err == nil {
+	configDir := filepath.Join(usr.HomeDir, ".config", "rat")
+
+	rat.SetAnnotatorsDir(filepath.Join(configDir, "annotators"))
+
+	if config, err := os.Open(filepath.Join(configDir, ".ratrc")); err == nil {
 		rat.LoadConfig(config)
 		config.Close()
 	}

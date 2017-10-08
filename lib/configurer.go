@@ -121,6 +121,13 @@ func (c *configurer) ProcessModeAnnotate(mode Mode, args []string) {
 				args[1],
 			)
 		})
+	case "external":
+		mode.RegisterAnnotator(func(ctx Context) Annotator {
+			return NewExternalAnnotator(
+				InterpolateContext(args[2], ctx),
+				args[1],
+			)
+		})
 	default:
 		panic(fmt.Sprintf("Unknown annotation type: '%s'", args[0]))
 	}

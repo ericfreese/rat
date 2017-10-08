@@ -16,6 +16,7 @@ var (
 	eventListeners map[keyEvent]func()
 	modes          map[string]Mode
 	cfg            Configurer
+	annotatorsDir  string
 
 	widgets WidgetStack
 	pagers  PagerStack
@@ -61,6 +62,10 @@ func configTerminal() error {
 	termbox.SetOutputMode(termbox.Output256)
 
 	return nil
+}
+
+func SetAnnotatorsDir(dir string) {
+	annotatorsDir = dir
 }
 
 func LoadConfig(rd io.Reader) {

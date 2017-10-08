@@ -3,6 +3,8 @@ package rat
 import (
 	"bufio"
 	"bytes"
+	"encoding/binary"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -222,6 +224,84 @@ func (ra *regexAnnotator) Annotate(rd io.Reader) <-chan Annotation {
 			for _, match := range ra.regex.FindAllIndex(bytes, -1) {
 				out <- NewAnnotation(match[0], match[1], ra.class, string(bytes[match[0]:match[1]]))
 			}
+		}
+	}()
+
+	return out
+}
+
+type externalAnnotator struct {
+	class string
+	cmd   string
+}
+
+func NewExternalAnnotator(cmd, class string) Annotator {
+	ea := &externalAnnotator{}
+
+	ea.class = class
+	ea.cmd = cmd
+
+	return ea
+}
+
+func (ea *externalAnnotator) readUint64(rd io.Reader) (uint64, error) {
+	buf := make([]byte, 8)
+
+	if _, err := io.ReadFull(rd, buf); err != nil {
+		return 0, err
+	}
+
+	return binary.LittleEndian.Uint64(buf), nil
+}
+
+func (ea *externalAnnotator) Annotate(rd io.Reader) <-chan Annotation {
+	out := make(chan Annotation)
+
+	cmd := exec.Command(os.Getenv("SHELL"), "-c", fmt.Sprintf("%s%c%s", annotatorsDir, os.PathSeparator, ea.cmd))
+	cmd.Stdin = rd
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		close(out)
+		return out
+	}
+
+	if err := cmd.Start(); err != nil {
+		close(out)
+		return out
+	}
+
+	go func() {
+		defer close(out)
+
+		for {
+			start, err := ea.readUint64(stdout)
+			if err != nil {
+				return
+			}
+
+			end, err := ea.readUint64(stdout)
+			if err != nil {
+				return
+			}
+
+			lenValue, _ := ea.readUint64(stdout)
+			if err != nil {
+				return
+			}
+
+			value := make([]byte, lenValue)
+			_, err = io.ReadFull(stdout, value)
+			if err != nil {
+				return
+			}
+
+			out <- NewAnnotation(
+				int(start),
+				int(end),
+				ea.class,
+				string(value),
+			)
 		}
 	}()
 
