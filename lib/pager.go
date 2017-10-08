@@ -117,10 +117,16 @@ func (p *cmdPager) HandleEvent(ke keyEvent) bool {
 	defer p.buffer.Unlock()
 
 	annotations := p.buffer.AnnotationsForLine(p.cursorY)
+
+	ctx := Context{}
+	for _, a := range annotations {
+		ctx[a.Class()] = a.Val()
+	}
+
 	if handlers, ok := p.annotationEventListeners[ke]; ok && len(annotations) > 0 {
 		for _, a := range annotations {
 			if handler, ok := handlers[a.Class()]; ok {
-				handler(Context{a.Class(): a.Val()})
+				handler(ctx)
 				return true
 			}
 		}
