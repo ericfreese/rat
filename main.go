@@ -15,7 +15,7 @@ var flags struct {
 }
 
 func init() {
-	flag.StringVar(&flags.cmd, "cmd", "cat ~/.ratrc", "command to run")
+	flag.StringVar(&flags.cmd, "cmd", "cat ~/.config/rat/.ratrc", "command to run")
 	flag.StringVar(&flags.mode, "mode", "default", "name of mode")
 
 	flag.Parse()
