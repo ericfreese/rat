@@ -1,0 +1,45 @@
+#!/usr/bin/env perl
+use strict;
+use bytes;
+
+my $regex;
+my $value_match = 0;
+my $boundary_match = 0;
+
+sub invalid_usage {
+  print STDERR "Usage: regex <pattern> [--value-match <group-index>] [--boundary-match <group-index>]";
+  exit 1;
+}
+
+while (@ARGV > 0) {
+  my $arg = shift;
+
+  if ($arg eq "--value-match") {
+    $value_match = shift;
+  } elsif ($arg eq "--boundary-match") {
+    $boundary_match = shift;
+  } elsif (!(defined $regex)) {
+    $regex = $arg;
+  } else {
+    invalid_usage
+  }
+}
+
+if (!(defined $regex)) {
+  invalid_usage
+}
+
+my $input = do { local $/; <STDIN> };
+
+while ($input =~ /$regex/g) {
+  my $boundary_start = $-[$boundary_match];
+  my $boundary_end = $+[$boundary_match];
+
+  my $value_start = $-[$value_match];
+  my $value_end = $+[$value_match];
+
+  my $value = substr($input, $value_start, ($value_end - $value_start));
+  my $value_len = bytes::length($value);
+
+  print(pack("QQQa$value_len", $boundary_start, $boundary_end, $value_len, $value));
+}
