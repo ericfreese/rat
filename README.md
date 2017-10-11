@@ -25,7 +25,7 @@ $ go build && go install
 
 ### Configure
 
-Rat is configured through a file `.ratrc` in your home config directory (`~/.config/rat/.ratrc`).
+Rat is configured through a file `ratrc` in your home config directory ([`$XDG_CONFIG_HOME/rat`](https://specifications.freedesktop.org/basedir-spec/latest), `~/.config/rat` by default).
 
 Rat pagers can be opened in one or more "modes". A mode is a configuration of "annotators" and "key bindings":
 
@@ -87,7 +87,7 @@ Note: Keybindings that are not inside of a mode definition will always be availa
 
 #### Example
 
-Add the following to your `.ratrc` to build a simple file viewer/manager:
+Add the following to your `ratrc` to build a simple file viewer/manager:
 
 ```shell
 mode files
@@ -124,7 +124,7 @@ rat [--mode=<mode>] [--cmd=<command>]
 ```
 
 `--mode` defaults to `default`
-`--cmd` defaults to `cat ~/.config/rat/.ratrc`
+`--cmd` defaults to `cat ~/.config/rat/ratrc`
 
 ### Keybindings
 
