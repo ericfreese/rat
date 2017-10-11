@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"os"
-	"os/user"
 	"path/filepath"
 
 	rat "github.com/ericfreese/rat/lib"
@@ -15,7 +14,7 @@ var flags struct {
 }
 
 func init() {
-	flag.StringVar(&flags.cmd, "cmd", "cat ~/.config/rat/.ratrc", "command to run")
+	flag.StringVar(&flags.cmd, "cmd", "cat ~/.config/rat/ratrc", "command to run")
 	flag.StringVar(&flags.mode, "mode", "default", "name of mode")
 
 	flag.Parse()
@@ -30,17 +29,7 @@ func main() {
 
 	defer rat.Close()
 
-	var usr *user.User
-	usr, err = user.Current()
-	if err != nil {
-		panic(err)
-	}
-
-	configDir := filepath.Join(usr.HomeDir, ".config", "rat")
-
-	rat.SetAnnotatorsDir(filepath.Join(configDir, "annotators"))
-
-	if config, err := os.Open(filepath.Join(configDir, ".ratrc")); err == nil {
+	if config, err := os.Open(filepath.Join(rat.ConfigDir, "ratrc")); err == nil {
 		rat.LoadConfig(config)
 		config.Close()
 	}
