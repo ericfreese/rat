@@ -76,7 +76,7 @@ bindkey <key> <new-pager-mode> -- <action>
 ```
 
 - `key`: A key combination that will trigger this action when pressed. Modifiers are added with `C-` and `S-`. See `lib/key_event.go` for a list of supported named keys.
-- `annotation-class`: This action will only be triggered on annotations of this class. If ommitted, keybinding will work anywhere in the pager.
+- `annotation-class`: This action will only be triggered on annotations of this class. If omitted, keybinding will work anywhere in the pager.
 - `new-pager-mode`: If the action will create a new pager, this defines the mode(s) to use when creating that pager.
 - `action`: A shell command to run when the specified key combination is pressed. Annotation values can be interpolated into the command using `%(<annotation-class>)`. The default is to open a new pager showing the output of the shell command, but several special prefixes can be used to specify different actions to be taken:
     - `!`: Do not open a new pager. Execute the command and reload the current pager.
