@@ -2,6 +2,7 @@
 
 _Compose shell commands to build terminal applications_
 
+[![Join the chat at https://gitter.im/rat-chat/Lobby](https://badges.gitter.im/rat-chat/Lobby.svg)](https://gitter.im/rat-chat/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![GoDoc](https://godoc.org/github.com/ericfreese/rat?status.svg)](https://godoc.org/github.com/ericfreese/rat)
 
 ![](demo.gif)
