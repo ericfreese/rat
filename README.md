@@ -19,9 +19,17 @@ Shell commands are executed and the output is captured and displayed in pagers. 
 
 ### Install
 
+#### Using Go
+
 ```shell
 $ go get github.com/ericfreese/rat
 $ go build && go install
+```
+
+#### Homebrew (Mac OS)
+
+```shell
+$ brew install rat
 ```
 
 ### Configure
