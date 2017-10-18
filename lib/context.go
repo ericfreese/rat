@@ -7,6 +7,16 @@ import (
 
 type Context map[string]string
 
+func NewContextFromAnnotations(annotations []Annotation) Context {
+	ctx := Context{}
+
+	for _, a := range annotations {
+		ctx[a.Class()] = a.Val()
+	}
+
+	return ctx
+}
+
 func ContextEnvironment(ctx Context) []string {
 	env := os.Environ()
 

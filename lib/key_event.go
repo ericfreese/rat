@@ -191,3 +191,15 @@ func KeyEventFromString(str string) keyEvent {
 
 	return ke
 }
+
+// TODO: Rewrite to allow commas in here
+func KeySequenceFromString(str string) []keyEvent {
+	keyStrings := strings.Split(str, ",")
+	ks := make([]keyEvent, 0, len(keyStrings))
+
+	for _, keyStr := range keyStrings {
+		ks = append(ks, KeyEventFromString(keyStr))
+	}
+
+	return ks
+}

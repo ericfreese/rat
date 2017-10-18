@@ -61,12 +61,20 @@ func (c *configurer) Process(rd io.Reader) {
 }
 
 func (c *configurer) ProcessBindkey(args []string) {
-	if len(args) != 3 {
-		panic("Expected 3 args for 'bindkey'")
+	switch len(args) {
+	case 2:
+		if action, ok := actions[args[1]]; ok {
+			AddEventHandler(args[0], action)
+		} else {
+			panic(fmt.Sprintf("Unknown action: '%s'", args[1]))
+		}
+	case 3:
+		AddEventHandler(args[0], func() {
+			PushPager(NewCmdPager(args[1], args[2], Context{}))
+		})
+	default:
+		panic("Expected 2-3 args for 'bindkey'")
 	}
-	AddEventListener(args[0], func() {
-		PushPager(NewCmdPager(args[1], args[2], Context{}))
-	})
 }
 
 func (c *configurer) ProcessMode(scanner *bufio.Scanner, args []string) {
@@ -166,55 +174,55 @@ func (c *configurer) ProcessModeBindkey(mode Mode, args []string) {
 }
 
 func (c *configurer) ProcessModeBindkeyConfirmExec(mode Mode, args []string) {
-	mode.RegisterEventListener(func(ctx Context) func(Pager) {
+	mode.RegisterEventHandler(func(ctx Context) func(Pager) {
 		return func(p Pager) {
-			p.AddEventListener(args[0], func() {
+			p.AddEventHandler(args[0], NewEventHandler(func() {
 				ConfirmExec(args[1], ctx, func() {
 					p.Reload()
 				})
-			})
+			}))
 		}
 	})
 }
 
 func (c *configurer) ProcessModeBindkeyExec(mode Mode, args []string) {
-	mode.RegisterEventListener(func(ctx Context) func(Pager) {
+	mode.RegisterEventHandler(func(ctx Context) func(Pager) {
 		return func(p Pager) {
-			p.AddEventListener(args[0], func() {
+			p.AddEventHandler(args[0], NewEventHandler(func() {
 				Exec(args[1], ctx)
 				p.Reload()
-			})
+			}))
 		}
 	})
 }
 
 func (c *configurer) ProcessModeBindkeyAnnotationConfirmExec(mode Mode, args []string) {
-	mode.RegisterEventListener(func(ctx Context) func(Pager) {
+	mode.RegisterEventHandler(func(ctx Context) func(Pager) {
 		return func(p Pager) {
-			p.AddAnnotationEventListener(args[0], args[1:2], func(ectx Context) {
+			p.AddEventHandler(args[0], NewCtxEventHandler(strings.Split(args[1], ","), func(ectx Context) {
 				ConfirmExec(args[2], MergeContext(ctx, ectx), func() {
 					p.Reload()
 				})
-			})
+			}))
 		}
 	})
 }
 
 func (c *configurer) ProcessModeBindkeyAnnotationExec(mode Mode, args []string) {
-	mode.RegisterEventListener(func(ctx Context) func(Pager) {
+	mode.RegisterEventHandler(func(ctx Context) func(Pager) {
 		return func(p Pager) {
-			p.AddAnnotationEventListener(args[0], args[1:2], func(ectx Context) {
+			p.AddEventHandler(args[0], NewCtxEventHandler(strings.Split(args[1], ","), func(ectx Context) {
 				Exec(args[2], MergeContext(ctx, ectx))
 				p.Reload()
-			})
+			}))
 		}
 	})
 }
 
 func (c *configurer) ProcessModeBindkeyAnnotationChildPager(mode Mode, args []string) {
-	mode.RegisterEventListener(func(ctx Context) func(Pager) {
+	mode.RegisterEventHandler(func(ctx Context) func(Pager) {
 		return func(p Pager) {
-			p.AddAnnotationEventListener(args[0], args[1:2], func(ectx Context) {
+			p.AddEventHandler(args[0], NewCtxEventHandler(strings.Split(args[1], ","), func(ectx Context) {
 				child := NewCmdPager(
 					args[2],
 					args[3],
@@ -222,21 +230,21 @@ func (c *configurer) ProcessModeBindkeyAnnotationChildPager(mode Mode, args []st
 				)
 
 				AddChildPager(p, child, args[0])
-			})
+			}))
 		}
 	})
 }
 
 func (c *configurer) ProcessModeBindkeyAnnotationPushPager(mode Mode, args []string) {
-	mode.RegisterEventListener(func(ctx Context) func(Pager) {
+	mode.RegisterEventHandler(func(ctx Context) func(Pager) {
 		return func(p Pager) {
-			p.AddAnnotationEventListener(args[0], args[1:2], func(ectx Context) {
+			p.AddEventHandler(args[0], NewCtxEventHandler(strings.Split(args[1], ","), func(ectx Context) {
 				PushPager(NewCmdPager(
 					args[2],
 					args[3],
 					MergeContext(ctx, ectx),
 				))
-			})
+			}))
 		}
 	})
 }

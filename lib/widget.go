@@ -4,7 +4,7 @@ type Widget interface {
 	SetBox(Box)
 	GetBox() Box
 	Render()
-	HandleEvent(keyEvent) bool
+	HandleEvent([]keyEvent) bool
 	Destroy()
 }
 
@@ -69,8 +69,8 @@ func (ws *widgetStack) Render() {
 	}
 }
 
-func (ws *widgetStack) HandleEvent(ke keyEvent) bool {
-	return ws.lastEl.widget.HandleEvent(ke)
+func (ws *widgetStack) HandleEvent(ks []keyEvent) bool {
+	return ws.lastEl.widget.HandleEvent(ks)
 }
 
 func (ws *widgetStack) Destroy() {
