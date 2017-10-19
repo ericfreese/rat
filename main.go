@@ -20,11 +20,20 @@ var flags struct {
 }
 
 func init() {
-	flag.StringVarP(&flags.cmd, "cmd", "c", "cat ~/.config/rat/ratrc", "command to run")
+	flag.StringVarP(&flags.cmd, "cmd", "c", "", "command to run (required)")
 	flag.StringVarP(&flags.mode, "mode", "m", "default", "name of mode")
 	flag.BoolVarP(&flags.version, "version", "v", false, "display version and exit")
 
 	flag.Parse()
+}
+
+func validateFlags() bool {
+	if len(flags.cmd) == 0 {
+		fmt.Fprintln(os.Stderr, "flag 'cmd' is required")
+		return false
+	}
+
+	return true
 }
 
 func main() {
@@ -33,6 +42,11 @@ func main() {
 	if flags.version {
 		fmt.Println(RatVersion)
 		return
+	}
+
+	if !validateFlags() {
+		flag.Usage()
+		os.Exit(1)
 	}
 
 	if err = rat.Init(); err != nil {
