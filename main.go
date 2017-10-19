@@ -1,12 +1,12 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	rat "github.com/ericfreese/rat/lib"
+	flag "github.com/spf13/pflag"
 )
 
 var (
@@ -20,9 +20,9 @@ var flags struct {
 }
 
 func init() {
-	flag.StringVar(&flags.cmd, "cmd", "cat ~/.config/rat/ratrc", "command to run")
-	flag.StringVar(&flags.mode, "mode", "default", "name of mode")
-	flag.BoolVar(&flags.version, "version", false, "display version and exit")
+	flag.StringVarP(&flags.cmd, "cmd", "c", "cat ~/.config/rat/ratrc", "command to run")
+	flag.StringVarP(&flags.mode, "mode", "m", "default", "name of mode")
+	flag.BoolVarP(&flags.version, "version", "v", false, "display version and exit")
 
 	flag.Parse()
 }
