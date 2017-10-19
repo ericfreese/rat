@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	RAT_VERSION = "0.0.2"
+	RatVersion = "0.0.2"
 )
 
 var flags struct {
@@ -31,7 +31,7 @@ func main() {
 	var err error
 
 	if flags.version {
-		fmt.Println(RAT_VERSION)
+		fmt.Println(RatVersion)
 		return
 	}
 
