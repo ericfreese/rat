@@ -110,22 +110,24 @@ func (c *configurer) ProcessModeAnnotate(mode Mode, args []string) {
 	case "match":
 		mode.RegisterAnnotator(func(ctx Context) Annotator {
 			return NewMatchAnnotator(
-				InterpolateContext(args[2], ctx),
+				args[2],
 				args[1],
+				ctx,
 			)
 		})
 	case "regex":
 		mode.RegisterAnnotator(func(ctx Context) Annotator {
 			return NewRegexAnnotator(
-				InterpolateContext(args[2], ctx),
+				args[2],
 				args[1],
 			)
 		})
 	case "external":
 		mode.RegisterAnnotator(func(ctx Context) Annotator {
 			return NewExternalAnnotator(
-				InterpolateContext(args[2], ctx),
+				args[2],
 				args[1],
+				ctx,
 			)
 		})
 	default:

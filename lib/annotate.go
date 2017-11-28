@@ -98,21 +98,22 @@ type matchAnnotator struct {
 	loading  chan bool
 }
 
-func NewMatchAnnotator(cmd, class string) Annotator {
+func NewMatchAnnotator(cmd, class string, ctx Context) Annotator {
 	ma := &matchAnnotator{}
 
 	ma.class = class
 	ma.loading = make(chan bool)
 
-	go ma.loadMatches(cmd)
+	go ma.loadMatches(cmd, ctx)
 
 	return ma
 }
 
-func (ma *matchAnnotator) loadMatches(cmd string) {
+func (ma *matchAnnotator) loadMatches(cmd string, ctx Context) {
 	defer close(ma.loading)
 
 	command := exec.Command(os.Getenv("SHELL"), "-c", cmd)
+	command.Env = ContextEnvironment(ctx)
 	output, _ := command.Output()
 	lines := strings.Split(string(output), "\n")
 	matchStrings := make([]string, 0, len(lines))
@@ -233,13 +234,15 @@ func (ra *regexAnnotator) Annotate(rd io.Reader) <-chan Annotation {
 type externalAnnotator struct {
 	class string
 	cmd   string
+	ctx   Context
 }
 
-func NewExternalAnnotator(cmd, class string) Annotator {
+func NewExternalAnnotator(cmd, class string, ctx Context) Annotator {
 	ea := &externalAnnotator{}
 
 	ea.class = class
 	ea.cmd = cmd
+	ea.ctx = ctx
 
 	return ea
 }
@@ -258,6 +261,7 @@ func (ea *externalAnnotator) Annotate(rd io.Reader) <-chan Annotation {
 	out := make(chan Annotation)
 
 	cmd := exec.Command(os.Getenv("SHELL"), "-c", fmt.Sprintf("%s%c%s", annotatorsDir, os.PathSeparator, ea.cmd))
+	cmd.Env = ContextEnvironment(ea.ctx)
 	cmd.Stdin = rd
 
 	stdout, err := cmd.StdoutPipe()

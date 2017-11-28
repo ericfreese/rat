@@ -99,7 +99,7 @@ func (p *cmdPager) Reload() {
 func (p *cmdPager) RunCommand() {
 	var err error
 
-	if p.command, err = NewShellCommand(p.InterpolatedCmd()); err != nil {
+	if p.command, err = NewShellCommand(p.cmd, p.ctx); err != nil {
 		panic(err)
 	}
 
@@ -155,7 +155,7 @@ func (p *cmdPager) layout() {
 }
 
 func (p *cmdPager) drawHeader() {
-	p.headerBox.DrawStyledRunes(1, 0, StyledRunesFromString(p.InterpolatedCmd(), gTermStyles.Get(termbox.AttrUnderline, termbox.ColorDefault)))
+	p.headerBox.DrawStyledRunes(1, 0, StyledRunesFromString(p.cmd, gTermStyles.Get(termbox.AttrUnderline, termbox.ColorDefault)))
 
 	pagerInfo := StyledRunesFromString(fmt.Sprintf(" %d %d/%d ", p.buffer.NumAnnotations(), p.cursorY+1, p.buffer.NumLines()), gTermStyles.Get(termbox.AttrBold, termbox.ColorDefault))
 	p.headerBox.DrawStyledRunes(p.headerBox.Width()-len(pagerInfo), 0, pagerInfo)
@@ -268,8 +268,4 @@ func (p *cmdPager) PageUp() {
 
 func (p *cmdPager) PageDown() {
 	p.ScrollY(p.contentBox.Height())
-}
-
-func (p *cmdPager) InterpolatedCmd() string {
-	return InterpolateContext(p.cmd, p.ctx)
 }

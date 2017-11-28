@@ -134,15 +134,16 @@ func Confirm(message string, callback func()) {
 }
 
 func ConfirmExec(cmd string, ctx Context, callback func()) {
-	Confirm(fmt.Sprintf("Run `%s`", InterpolateContext(cmd, ctx)), func() {
+	Confirm(fmt.Sprintf("Run `%s`", cmd), func() {
 		Exec(cmd, ctx)
 		callback()
 	})
 }
 
 func Exec(cmd string, ctx Context) {
-	c := exec.Command(os.Getenv("SHELL"), "-c", InterpolateContext(cmd, ctx))
+	c := exec.Command(os.Getenv("SHELL"), "-c", cmd)
 
+	c.Env = ContextEnvironment(ctx)
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr

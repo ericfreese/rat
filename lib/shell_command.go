@@ -16,10 +16,11 @@ type shellCommand struct {
 	io.Reader
 }
 
-func NewShellCommand(c string) (ShellCommand, error) {
+func NewShellCommand(c string, ctx Context) (ShellCommand, error) {
 	sc := &shellCommand{}
 
 	sc.cmd = exec.Command(os.Getenv("SHELL"), "-c", c)
+	sc.cmd.Env = ContextEnvironment(ctx)
 	sc.cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	var (

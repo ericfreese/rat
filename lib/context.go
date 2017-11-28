@@ -2,17 +2,19 @@ package rat
 
 import (
 	"fmt"
-	"strings"
+	"os"
 )
 
 type Context map[string]string
 
-func InterpolateContext(str string, ctx Context) string {
+func ContextEnvironment(ctx Context) []string {
+	env := os.Environ()
+
 	for k, v := range ctx {
-		str = strings.Replace(str, fmt.Sprintf("%%(%s)", k), v, -1)
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	return str
+	return env
 }
 
 func MergeContext(orig, extra Context) Context {
