@@ -24,7 +24,7 @@ var (
 )
 
 func Init() error {
-	if err := configTerminal(); err != nil {
+	if err := initTermbox(); err != nil {
 		return err
 	}
 
@@ -51,7 +51,11 @@ func Init() error {
 	return nil
 }
 
-func configTerminal() error {
+func closeTermbox() {
+	termbox.Close()
+}
+
+func initTermbox() error {
 	var err error
 
 	if err = termbox.Init(); err != nil {
@@ -73,7 +77,7 @@ func LoadConfig(rd io.Reader) {
 }
 
 func Close() {
-	termbox.Close()
+	closeTermbox()
 }
 
 func Quit() {
@@ -138,11 +142,15 @@ func ConfirmExec(cmd string, ctx Context, callback func()) {
 
 func Exec(cmd string, ctx Context) {
 	c := exec.Command(os.Getenv("SHELL"), "-c", InterpolateContext(cmd, ctx))
+
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
-	c.Run()
+	c.Stderr = os.Stderr
 
-	configTerminal()
+	closeTermbox()
+	defer initTermbox()
+
+	c.Run()
 }
 
 func RegisterMode(name string, mode Mode) {
