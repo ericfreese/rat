@@ -11,12 +11,13 @@ import (
 )
 
 var (
-	events         chan termbox.Event
-	done           chan bool
-	eventListeners map[keyEvent]func()
-	modes          map[string]Mode
-	cfg            Configurer
-	annotatorsDir  string
+	events        chan termbox.Event
+	done          chan bool
+	eventHandlers HandlerRegistry
+	modes         map[string]Mode
+	cfg           Configurer
+	annotatorsDir string
+	keyStack      []keyEvent
 
 	widgets WidgetStack
 	pagers  PagerStack
@@ -32,18 +33,14 @@ func Init() error {
 	widgets = NewWidgetStack()
 	pagers = NewPagerStack()
 	done = make(chan bool)
-	eventListeners = make(map[keyEvent]func())
+	eventHandlers = NewHandlerRegistry()
 	modes = make(map[string]Mode)
 	cfg = NewConfigurer()
 
 	widgets.Push(pagers)
 	prompt = NewConfirmPrompt()
 
-	AddEventListener("q", PopPager)
-	AddEventListener("S-q", Quit)
-	AddEventListener("1", func() { pagers.Show(1) })
-	AddEventListener("2", func() { pagers.Show(2) })
-	AddEventListener("3", func() { pagers.Show(3) })
+	AddEventHandler("C-c", Quit)
 
 	w, h := termbox.Size()
 	layout(w, h)
@@ -101,8 +98,11 @@ loop:
 		case e := <-events:
 			switch e.Type {
 			case termbox.EventKey:
-				ke := KeyEventFromTBEvent(&e)
-				handleEvent(ke)
+				keyStack = append(keyStack, KeyEventFromTBEvent(&e))
+
+				if handleEvent(keyStack) {
+					keyStack = nil
+				}
 			case termbox.EventResize:
 				layout(e.Width, e.Height)
 			}
@@ -113,8 +113,8 @@ loop:
 	widgets.Destroy()
 }
 
-func AddChildPager(parent, child Pager, creatingKey string) {
-	pagers.AddChild(parent, child, creatingKey)
+func AddChildPager(parent, child Pager, creatingKeys string) {
+	pagers.AddChild(parent, child, creatingKeys)
 }
 
 func PushPager(p Pager) {
@@ -170,21 +170,21 @@ func render() {
 	termbox.Flush()
 }
 
-func AddEventListener(keyStr string, handler func()) {
-	eventListeners[KeyEventFromString(keyStr)] = handler
+func AddEventHandler(keyStr string, handler func()) {
+	eventHandlers.Add(KeySequenceFromString(keyStr), NewEventHandler(handler))
 }
 
-func handleEvent(ke keyEvent) bool {
-	if prompt.HandleEvent(ke) {
+func handleEvent(ks []keyEvent) bool {
+	if prompt.HandleEvent(ks) {
 		return true
 	}
 
-	if widgets.HandleEvent(ke) {
+	if widgets.HandleEvent(ks) {
 		return true
 	}
 
-	if handler, ok := eventListeners[ke]; ok {
-		handler()
+	if handler := eventHandlers.Find(ks); handler != nil {
+		handler.Call(nil)
 		return true
 	}
 

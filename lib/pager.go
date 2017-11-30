@@ -9,8 +9,7 @@ import (
 
 type Pager interface {
 	Widget
-	AddEventListener(keyStr string, handler func())
-	AddAnnotationEventListener(keyStr string, annotationTypes []string, handler func(Context))
+	AddEventHandler(keyStr string, handler EventHandler)
 	Reload()
 	CursorUp()
 	CursorDown()
@@ -23,16 +22,15 @@ type Pager interface {
 }
 
 type cmdPager struct {
-	modes                    []Mode
-	cmd                      string
-	ctx                      Context
-	command                  ShellCommand
-	buffer                   Buffer
-	scrollOffsetY            int
-	cursorY                  int
-	stop                     chan bool
-	eventListeners           map[keyEvent]func()
-	annotationEventListeners map[keyEvent]map[string]func(Context)
+	modes         []Mode
+	cmd           string
+	ctx           Context
+	command       ShellCommand
+	buffer        Buffer
+	scrollOffsetY int
+	cursorY       int
+	stop          chan bool
+	eventHandlers HandlerRegistry
 
 	box        Box
 	headerBox  Box
@@ -45,10 +43,7 @@ func NewCmdPager(modeNames string, cmd string, ctx Context) Pager {
 	p.cmd = cmd
 	p.ctx = ctx
 
-	p.eventListeners = make(map[keyEvent]func())
-	p.annotationEventListeners = make(map[keyEvent]map[string]func(Context))
-
-	p.addDefaultListeners()
+	p.eventHandlers = NewHandlerRegistry()
 
 	splitModeNames := strings.Split(modeNames, ",")
 	p.modes = make([]Mode, 0, len(splitModeNames))
@@ -57,7 +52,7 @@ func NewCmdPager(modeNames string, cmd string, ctx Context) Pager {
 		if mode, ok := modes[modeName]; ok {
 			p.modes = append(p.modes, mode)
 
-			mode.AddEventListeners(ctx)(p)
+			mode.AddEventHandlers(ctx)(p)
 		}
 	}
 
@@ -66,20 +61,8 @@ func NewCmdPager(modeNames string, cmd string, ctx Context) Pager {
 	return p
 }
 
-func (p *cmdPager) AddEventListener(keyStr string, handler func()) {
-	p.eventListeners[KeyEventFromString(keyStr)] = handler
-}
-
-func (p *cmdPager) AddAnnotationEventListener(keyStr string, annotationTypes []string, handler func(Context)) {
-	ke := KeyEventFromString(keyStr)
-
-	if _, ok := p.annotationEventListeners[ke]; !ok {
-		p.annotationEventListeners[ke] = make(map[string]func(Context))
-	}
-
-	for _, annotationType := range annotationTypes {
-		p.annotationEventListeners[KeyEventFromString(keyStr)][annotationType] = handler
-	}
+func (p *cmdPager) AddEventHandler(keyStr string, handler EventHandler) {
+	p.eventHandlers.Add(KeySequenceFromString(keyStr), handler)
 }
 
 func (p *cmdPager) Destroy() {
@@ -112,28 +95,14 @@ func (p *cmdPager) RunCommand() {
 	}
 }
 
-func (p *cmdPager) HandleEvent(ke keyEvent) bool {
+func (p *cmdPager) HandleEvent(ks []keyEvent) bool {
 	p.buffer.Lock()
 	defer p.buffer.Unlock()
 
-	annotations := p.buffer.AnnotationsForLine(p.cursorY)
+	ctx := NewContextFromAnnotations(p.buffer.AnnotationsForLine(p.cursorY))
 
-	ctx := Context{}
-	for _, a := range annotations {
-		ctx[a.Class()] = a.Val()
-	}
-
-	if handlers, ok := p.annotationEventListeners[ke]; ok && len(annotations) > 0 {
-		for _, a := range annotations {
-			if handler, ok := handlers[a.Class()]; ok {
-				handler(ctx)
-				return true
-			}
-		}
-	}
-
-	if handler, ok := p.eventListeners[ke]; ok {
-		handler()
+	if handler := p.eventHandlers.FindCtx(ks, ctx); handler != nil {
+		handler.Call(ctx)
 		return true
 	}
 
@@ -222,20 +191,6 @@ func (p *cmdPager) ScrollY(delta int) {
 
 func (p *cmdPager) CursorY() int {
 	return p.cursorY
-}
-
-func (p *cmdPager) addDefaultListeners() {
-	p.AddEventListener("C-r", p.Reload)
-	p.AddEventListener("j", p.CursorDown)
-	p.AddEventListener("k", p.CursorUp)
-	p.AddEventListener("down", p.CursorDown)
-	p.AddEventListener("up", p.CursorUp)
-	p.AddEventListener("C-e", p.ScrollDown)
-	p.AddEventListener("C-y", p.ScrollUp)
-	p.AddEventListener("pgdn", p.PageDown)
-	p.AddEventListener("pgup", p.PageUp)
-	p.AddEventListener("g", p.CursorFirstLine)
-	p.AddEventListener("S-g", p.CursorLastLine)
 }
 
 func (p *cmdPager) CursorUp() {

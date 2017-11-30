@@ -2,57 +2,60 @@ package rat
 
 type PagerStack interface {
 	Widget
-	AddEventListener(string, func())
 	Show(int)
+	Last() Pager
 	Push(p Pager)
 	Pop()
 	Size() int
-	AddChild(parent Pager, child Pager, creatingKey string)
+	AddChild(parent Pager, child Pager, creatingKeys string)
 	PushAsChild(Pager, string)
 	ParentCursorUp()
 	ParentCursorDown()
 }
 
 type pagerStack struct {
-	lastEl         *pagerStackElement
-	size           int
-	numToShow      int
-	eventListeners map[keyEvent]func()
-	box            Box
-	validLayout    bool
+	lastEl        *pagerStackElement
+	size          int
+	numToShow     int
+	eventHandlers HandlerRegistry
+	box           Box
+	validLayout   bool
 }
 
 type pagerStackElement struct {
-	pager       Pager
-	previous    *pagerStackElement
-	creatingKey string
+	pager        Pager
+	previous     *pagerStackElement
+	creatingKeys string
 }
 
 func NewPagerStack() PagerStack {
 	ps := &pagerStack{}
 
 	ps.numToShow = 3
-	ps.eventListeners = make(map[keyEvent]func())
-	ps.addDefaultListeners()
+	ps.eventHandlers = NewHandlerRegistry()
 
 	return ps
 }
 
-func (ps *pagerStack) AddChild(parent, child Pager, creatingKey string) {
+func (ps *pagerStack) AddChild(parent, child Pager, creatingKeys string) {
 	for el := ps.lastEl; el != nil; el = el.previous {
 		if el.pager != parent {
 			ps.Pop()
 		} else {
-			ps.PushAsChild(child, creatingKey)
+			ps.PushAsChild(child, creatingKeys)
 			return
 		}
 	}
 }
 
-func (ps *pagerStack) PushAsChild(p Pager, creatingKey string) {
-	ps.lastEl = &pagerStackElement{p, ps.lastEl, creatingKey}
+func (ps *pagerStack) PushAsChild(p Pager, creatingKeys string) {
+	ps.lastEl = &pagerStackElement{p, ps.lastEl, creatingKeys}
 	ps.size++
 	ps.validLayout = false
+}
+
+func (ps *pagerStack) Last() Pager {
+	return ps.lastEl.pager
 }
 
 func (ps *pagerStack) Push(p Pager) {
@@ -177,32 +180,14 @@ func (ps *pagerStack) Render() {
 	}
 }
 
-func (ps *pagerStack) AddEventListener(keyStr string, handler func()) {
-	ps.eventListeners[KeyEventFromString(keyStr)] = handler
-}
-
-func (ps *pagerStack) HandleEvent(ke keyEvent) bool {
-	if ps.size == 0 {
-		return false
-	}
-
-	if handler, ok := ps.eventListeners[ke]; ok && ps.size > 1 && ps.numToShow > 1 && len(ps.lastEl.creatingKey) > 0 {
-		handler()
-		return true
-	}
-
-	return ps.lastEl.pager.HandleEvent(ke)
+func (ps *pagerStack) HandleEvent(ks []keyEvent) bool {
+	return ps.lastEl.pager.HandleEvent(ks)
 }
 
 func (ps *pagerStack) Destroy() {
 	for ps.size > 0 {
 		ps.Pop()
 	}
-}
-
-func (ps *pagerStack) addDefaultListeners() {
-	ps.AddEventListener("S-j", ps.ParentCursorDown)
-	ps.AddEventListener("S-k", ps.ParentCursorUp)
 }
 
 func (ps *pagerStack) parentPager() Pager {
@@ -218,15 +203,15 @@ func (ps *pagerStack) parentPager() Pager {
 }
 
 func (ps *pagerStack) ParentCursorUp() {
-	if len(ps.lastEl.creatingKey) > 0 {
+	if len(ps.lastEl.creatingKeys) > 0 && ps.size > 1 && ps.numToShow > 1 {
 		ps.parentPager().CursorUp()
-		ps.parentPager().HandleEvent(KeyEventFromString(ps.lastEl.creatingKey))
+		ps.parentPager().HandleEvent(KeySequenceFromString(ps.lastEl.creatingKeys))
 	}
 }
 
 func (ps *pagerStack) ParentCursorDown() {
-	if len(ps.lastEl.creatingKey) > 0 {
+	if len(ps.lastEl.creatingKeys) > 0 && ps.size > 1 && ps.numToShow > 1 {
 		ps.parentPager().CursorDown()
-		ps.parentPager().HandleEvent(KeyEventFromString(ps.lastEl.creatingKey))
+		ps.parentPager().HandleEvent(KeySequenceFromString(ps.lastEl.creatingKeys))
 	}
 }

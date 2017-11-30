@@ -47,9 +47,9 @@ func (cp *confirmPrompt) Render() {
 	cp.box.DrawStyledRunes(1, 0, StyledRunesFromString(cp.message, gTermStyles.Get(termbox.ColorGreen, termbox.ColorDefault)))
 }
 
-func (cp *confirmPrompt) HandleEvent(ke keyEvent) bool {
+func (cp *confirmPrompt) HandleEvent(ks []keyEvent) bool {
 	if len(cp.message) > 0 && cp.callback != nil {
-		switch ke {
+		switch ks[len(ks)-1] {
 		case KeyEventFromString("y"), KeyEventFromString("S-y"):
 			cp.callback()
 			cp.Clear()
