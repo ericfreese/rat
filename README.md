@@ -80,7 +80,7 @@ bindkey <key> <new-pager-mode> -- <action>
 - `key`: A key combination that will trigger this action when pressed. Modifiers are added with `C-` and `S-`. See `lib/key_event.go` for a list of supported named keys.
 - `annotation-class`: This action will only be triggered on annotations of this class. If omitted, keybinding will work anywhere in the pager.
 - `new-pager-mode`: If the action will create a new pager, this defines the mode(s) to use when creating that pager.
-- `action`: A shell command to run when the specified key combination is pressed. Annotation values can be interpolated into the command using `%(<annotation-class>)`. The default is to open a new pager showing the output of the shell command, but several special prefixes can be used to specify different actions to be taken:
+- `action`: A shell command to run when the specified key combination is pressed. Annotation values will be exported to the command process as variables named for their annotation class. The default is to open a new pager showing the output of the shell command, but several special prefixes can be used to specify different actions to be taken:
     - `!`: Do not open a new pager. Execute the command and reload the current pager.
     - `?!`: Like `!`, but confirm with the user first (will have to press 'y' for yes or 'n' for no).
     - `>`: Like the default, open a new pager with the contents of the shell command, but also set up a parent-child relationship so that the parent cursor can be moved up and down from inside the child pager with the `ParentCursorUp` and `ParentCursorDown` commands.
@@ -101,15 +101,15 @@ mode files
   # the `enter` key is pressed, run `cat` with the value of the
   # annotation (the filename) and display the output in a new pager with
   # mode "preview". 
-  bindkey enter file preview -- >cat %(file)
+  bindkey enter file preview -- >cat $file
 
   # When the cursor is on a line with an annotation of class "file" and
   # the `e` key is pressed, open the selected file in vim.
-  bindkey e     file         -- !vim %(file)
+  bindkey e     file         -- !vim $file
 
   # When the cursor is on a line with an annotation of class "file" and
   # Shift + `x` is pressed, delete the file if the user confirms it.
-  bindkey S-x   file         -- ?!rm %(file)
+  bindkey S-x   file         -- ?!rm $file
 end
 ```
 
