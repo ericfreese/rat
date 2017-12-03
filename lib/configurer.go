@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -50,6 +52,8 @@ func (c *configurer) Process(rd io.Reader) {
 			c.ProcessBindkey(args)
 		case "mode":
 			c.ProcessMode(scanner, args)
+		case "source":
+			c.ProcessExternalConfig(args[0])
 		default:
 			panic(fmt.Sprintf("Unknown directive: '%s'", directive))
 		}
@@ -58,6 +62,15 @@ func (c *configurer) Process(rd io.Reader) {
 	if err := scanner.Err(); err != nil {
 		panic(err)
 	}
+}
+
+func (c *configurer) ProcessExternalConfig(fileName string) {
+	externalConfig, err := os.Open(filepath.Join(ConfigDir, fileName))
+	if err != nil {
+		panic(err)
+	}
+
+	c.Process(externalConfig)
 }
 
 func (c *configurer) ProcessBindkey(args []string) {

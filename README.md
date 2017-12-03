@@ -114,6 +114,16 @@ bindkey <key> <new-pager-mode> -- <cmd>
 
 Note: Keybindings that are not inside of a mode definition will always be available and do not have the special prefix behavior described above.
 
+#### Source configurations from separate files
+
+The `source` keyword starts a declaration of a separate config file
+
+```shell
+source <file>
+```
+
+- `file`: The name of a sibling to `ratrc` that contains valid rat configuration instructions
+
 #### Example
 
 Add the following to your `ratrc` to build a simple file viewer/manager:
