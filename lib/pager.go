@@ -2,6 +2,7 @@ package rat
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	termbox "github.com/nsf/termbox-go"
@@ -21,11 +22,10 @@ type Pager interface {
 	PageDown()
 }
 
-type cmdPager struct {
+type pager struct {
+	title         string
 	modes         []Mode
-	cmd           string
 	ctx           Context
-	command       ShellCommand
 	buffer        Buffer
 	scrollOffsetY int
 	cursorY       int
@@ -37,12 +37,11 @@ type cmdPager struct {
 	contentBox Box
 }
 
-func NewCmdPager(modeNames string, cmd string, ctx Context) Pager {
-	p := &cmdPager{}
+func newPager(title string, modeNames string, ctx Context) *pager {
+	p := &pager{}
 
-	p.cmd = cmd
+	p.title = title
 	p.ctx = ctx
-
 	p.eventHandlers = NewHandlerRegistry()
 
 	splitModeNames := strings.Split(modeNames, ",")
@@ -51,43 +50,13 @@ func NewCmdPager(modeNames string, cmd string, ctx Context) Pager {
 	for _, modeName := range splitModeNames {
 		if mode, ok := modes[modeName]; ok {
 			p.modes = append(p.modes, mode)
-
-			mode.AddEventHandlers(ctx)(p)
 		}
 	}
-
-	p.RunCommand()
 
 	return p
 }
 
-func (p *cmdPager) AddEventHandler(keyStr string, handler EventHandler) {
-	p.eventHandlers.Add(KeySequenceFromString(keyStr), handler)
-}
-
-func (p *cmdPager) Destroy() {
-	p.Stop()
-}
-
-func (p *cmdPager) Stop() {
-	p.command.Close()
-	p.buffer.Close()
-}
-
-func (p *cmdPager) Reload() {
-	p.Stop()
-	p.RunCommand()
-}
-
-func (p *cmdPager) RunCommand() {
-	var err error
-
-	if p.command, err = NewShellCommand(p.cmd, p.ctx); err != nil {
-		panic(err)
-	}
-
-	p.buffer = NewBuffer(p.command)
-
+func (p *pager) startAnnotators() {
 	for _, m := range p.modes {
 		for _, a := range m.InitAnnotators(p.ctx)() {
 			go p.buffer.AnnotateWith(a)
@@ -95,7 +64,19 @@ func (p *cmdPager) RunCommand() {
 	}
 }
 
-func (p *cmdPager) HandleEvent(ks []keyEvent) bool {
+func (p *pager) AddEventHandler(keyStr string, handler EventHandler) {
+	p.eventHandlers.Add(KeySequenceFromString(keyStr), handler)
+}
+
+func (p *pager) Stop() {
+	p.buffer.Close()
+}
+
+func (p *pager) Destroy() {
+	p.Stop()
+}
+
+func (p *pager) HandleEvent(ks []keyEvent) bool {
 	p.buffer.Lock()
 	defer p.buffer.Unlock()
 
@@ -109,28 +90,28 @@ func (p *cmdPager) HandleEvent(ks []keyEvent) bool {
 	return false
 }
 
-func (p *cmdPager) SetBox(box Box) {
+func (p *pager) SetBox(box Box) {
 	p.box = box
 	p.layout()
 }
 
-func (p *cmdPager) GetBox() Box {
+func (p *pager) GetBox() Box {
 	return p.box
 }
 
-func (p *cmdPager) layout() {
+func (p *pager) layout() {
 	p.headerBox = NewBox(p.box.Left(), p.box.Top(), p.box.Width(), 1)
 	p.contentBox = NewBox(p.box.Left(), p.box.Top()+1, p.box.Width(), p.box.Height()-1)
 }
 
-func (p *cmdPager) drawHeader() {
-	p.headerBox.DrawStyledRunes(1, 0, StyledRunesFromString(p.cmd, gTermStyles.Get(termbox.AttrUnderline, termbox.ColorDefault)))
+func (p *pager) drawHeader() {
+	p.headerBox.DrawStyledRunes(1, 0, StyledRunesFromString(p.title, gTermStyles.Get(termbox.AttrUnderline, termbox.ColorDefault)))
 
 	pagerInfo := StyledRunesFromString(fmt.Sprintf(" %d %d/%d ", p.buffer.NumAnnotations(), p.cursorY+1, p.buffer.NumLines()), gTermStyles.Get(termbox.AttrBold, termbox.ColorDefault))
 	p.headerBox.DrawStyledRunes(p.headerBox.Width()-len(pagerInfo), 0, pagerInfo)
 }
 
-func (p *cmdPager) drawContent() {
+func (p *pager) drawContent() {
 	p.contentBox.DrawStyledRune(1, p.cursorY-p.scrollOffsetY, NewStyledRune('▶', gTermStyles.Get(termbox.ColorRed, termbox.ColorDefault)))
 
 	for y, line := range p.buffer.StyledLines(p.scrollOffsetY, p.contentBox.Height()) {
@@ -138,14 +119,14 @@ func (p *cmdPager) drawContent() {
 	}
 }
 
-func (p *cmdPager) Render() {
+func (p *pager) Render() {
 	p.buffer.Lock()
 	p.drawHeader()
 	p.drawContent()
 	p.buffer.Unlock()
 }
 
-func (p *cmdPager) MoveCursorToY(cursorY int) {
+func (p *pager) MoveCursorToY(cursorY int) {
 	if cursorY < 0 {
 		p.cursorY = 0
 	} else if cursorY >= p.buffer.NumLines() {
@@ -161,11 +142,11 @@ func (p *cmdPager) MoveCursorToY(cursorY int) {
 	}
 }
 
-func (p *cmdPager) MoveCursorY(delta int) {
+func (p *pager) MoveCursorY(delta int) {
 	p.MoveCursorToY(p.cursorY + delta)
 }
 
-func (p *cmdPager) ScrollToY(scrollY int) {
+func (p *pager) ScrollToY(scrollY int) {
 	if scrollY < 0 {
 		p.scrollOffsetY = 0
 	} else if scrollY >= p.buffer.NumLines()-p.contentBox.Height() {
@@ -185,42 +166,100 @@ func (p *cmdPager) ScrollToY(scrollY int) {
 	}
 }
 
-func (p *cmdPager) ScrollY(delta int) {
+func (p *pager) ScrollY(delta int) {
 	p.ScrollToY(p.scrollOffsetY + delta)
 }
 
-func (p *cmdPager) CursorY() int {
+func (p *pager) CursorY() int {
 	return p.cursorY
 }
 
-func (p *cmdPager) CursorUp() {
+func (p *pager) CursorUp() {
 	p.MoveCursorY(-1)
 }
 
-func (p *cmdPager) CursorDown() {
+func (p *pager) CursorDown() {
 	p.MoveCursorY(1)
 }
 
-func (p *cmdPager) CursorFirstLine() {
+func (p *pager) CursorFirstLine() {
 	p.MoveCursorToY(0)
 }
 
-func (p *cmdPager) CursorLastLine() {
+func (p *pager) CursorLastLine() {
 	p.MoveCursorToY(p.buffer.NumLines())
 }
 
-func (p *cmdPager) ScrollUp() {
+func (p *pager) ScrollUp() {
 	p.ScrollY(-1)
 }
 
-func (p *cmdPager) ScrollDown() {
+func (p *pager) ScrollDown() {
 	p.ScrollY(1)
 }
 
-func (p *cmdPager) PageUp() {
+func (p *pager) PageUp() {
 	p.ScrollY(-p.contentBox.Height())
 }
 
-func (p *cmdPager) PageDown() {
+func (p *pager) PageDown() {
 	p.ScrollY(p.contentBox.Height())
+}
+
+func (p *pager) Reload() {
+}
+
+func NewReadPager(rd io.Reader, title string, modeNames string, ctx Context) Pager {
+	p := newPager(title, modeNames, ctx)
+
+	for _, mode := range p.modes {
+		mode.AddEventHandlers(ctx)(p)
+	}
+
+	p.buffer = NewBuffer(rd)
+	p.startAnnotators()
+
+	return p
+}
+
+type cmdPager struct {
+	*pager
+	cmd     string
+	command ShellCommand
+}
+
+func NewCmdPager(modeNames string, cmd string, ctx Context) Pager {
+	cp := &cmdPager{}
+
+	cp.cmd = cmd
+	cp.pager = newPager(cmd, modeNames, ctx)
+
+	for _, mode := range cp.modes {
+		mode.AddEventHandlers(ctx)(cp)
+	}
+
+	cp.RunCommand()
+
+	return cp
+}
+
+func (cp *cmdPager) Stop() {
+	cp.command.Close()
+	cp.pager.Stop()
+}
+
+func (cp *cmdPager) Reload() {
+	cp.Stop()
+	cp.RunCommand()
+}
+
+func (cp *cmdPager) RunCommand() {
+	var err error
+
+	if cp.command, err = NewShellCommand(cp.cmd, cp.ctx); err != nil {
+		panic(err)
+	}
+
+	cp.buffer = NewBuffer(cp.command)
+	cp.pager.startAnnotators()
 }
