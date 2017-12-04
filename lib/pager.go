@@ -2,6 +2,7 @@ package rat
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	termbox "github.com/nsf/termbox-go"
@@ -206,6 +207,19 @@ func (p *pager) PageDown() {
 }
 
 func (p *pager) Reload() {
+}
+
+func NewReadPager(rd io.Reader, title string, modeNames string, ctx Context) Pager {
+	p := newPager(title, modeNames, ctx)
+
+	for _, mode := range p.modes {
+		mode.AddEventHandlers(ctx)(p)
+	}
+
+	p.buffer = NewBuffer(rd)
+	p.startAnnotators()
+
+	return p
 }
 
 type cmdPager struct {

@@ -20,20 +20,11 @@ var flags struct {
 }
 
 func init() {
-	flag.StringVarP(&flags.cmd, "cmd", "c", "", "command to run (required)")
+	flag.StringVarP(&flags.cmd, "cmd", "c", "", "command to run")
 	flag.StringVarP(&flags.mode, "mode", "m", "default", "name of mode")
 	flag.BoolVarP(&flags.version, "version", "v", false, "display version and exit")
 
 	flag.Parse()
-}
-
-func validateFlags() bool {
-	if len(flags.cmd) == 0 {
-		fmt.Fprintln(os.Stderr, "flag 'cmd' is required")
-		return false
-	}
-
-	return true
 }
 
 func main() {
@@ -42,11 +33,6 @@ func main() {
 	if flags.version {
 		fmt.Println(RatVersion)
 		return
-	}
-
-	if !validateFlags() {
-		flag.Usage()
-		os.Exit(1)
 	}
 
 	if err = rat.Init(); err != nil {
@@ -60,7 +46,11 @@ func main() {
 		config.Close()
 	}
 
-	rat.PushPager(rat.NewCmdPager(flags.mode, flags.cmd, rat.Context{}))
+	if len(flags.cmd) > 0 {
+		rat.PushPager(rat.NewCmdPager(flags.mode, flags.cmd, rat.Context{}))
+	} else {
+		rat.PushPager(rat.NewReadPager(os.Stdin, "<stdin>", flags.mode, rat.Context{}))
+	}
 
 	rat.Run()
 }
