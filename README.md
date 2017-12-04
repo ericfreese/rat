@@ -162,8 +162,9 @@ See `examples/` directory for more configuration examples.
 rat [--mode=<mode>] [--cmd=<command>]
 ```
 
-`--mode` defaults to `default`
-`--cmd` defaults to `cat ~/.config/rat/ratrc`
+`--mode` defaults to `default`.
+
+If `--cmd` is not provided, rat will read from STDIN.
 
 ## Development
 
