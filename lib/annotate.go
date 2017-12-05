@@ -260,8 +260,11 @@ func (ea *externalAnnotator) readUint64(rd io.Reader) (uint64, error) {
 func (ea *externalAnnotator) Annotate(rd io.Reader) <-chan Annotation {
 	out := make(chan Annotation)
 
-	cmd := exec.Command(os.Getenv("SHELL"), "-c", fmt.Sprintf("%s%c%s", annotatorsDir, os.PathSeparator, ea.cmd))
-	cmd.Env = ContextEnvironment(ea.ctx)
+	env := ContextEnvironment(ea.ctx)
+	env = append(env, fmt.Sprintf("PATH=%s:%s", annotatorsDir, os.Getenv("PATH")))
+
+	cmd := exec.Command(os.Getenv("SHELL"), "-c", ea.cmd)
+	cmd.Env = env
 	cmd.Stdin = rd
 
 	stdout, err := cmd.StdoutPipe()
