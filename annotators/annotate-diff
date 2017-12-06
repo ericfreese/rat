@@ -1,0 +1,162 @@
+#!/usr/bin/env perl
+use strict;
+use bytes;
+use Encode 'encode';
+
+my $mode = 'diff';
+
+sub invalid_usage {
+  print STDERR "Usage: annotate-diff [--mode=<mode>]";
+  exit 1;
+}
+
+while (@ARGV > 0) {
+  my $arg = shift;
+
+  if ($arg eq "--mode") {
+    $mode = shift;
+  } else {
+    invalid_usage
+  }
+}
+
+my $byte_offset = 0;
+
+my %diff;
+
+my %hunk;
+my $hunk_from_line;
+my $hunk_to_line;
+
+my $line;
+
+sub annotate_diff {
+  return unless $mode eq 'diff';
+
+  my $value = $diff{value};
+  my $value_len = length(encode('UTF-8', $value));
+
+  print(
+    pack(
+      "QQQa$value_len",
+      $diff{start},
+      $byte_offset,
+      $value_len,
+      $value,
+    )
+  );
+}
+
+sub annotate_hunk {
+  return unless $mode eq 'hunks';
+
+  my $value = "$diff{header}$hunk{value}";
+  my $value_len = length(encode('UTF-8', $value));
+
+  print(
+    pack(
+      "QQQa$value_len",
+      $hunk{start},
+      $byte_offset,
+      $value_len,
+      $value,
+    )
+  );
+}
+
+sub annotate_line {
+  return unless $mode eq 'lines';
+
+  my $from_length;
+  my $to_length;
+
+  if (/^\-.*$/) {
+    $from_length = 1;
+    $to_length = 0;
+  } elsif (/^\+.*$/) {
+    $from_length = 0;
+    $to_length = 1;
+  }
+
+  my $value = "$diff{header}\@\@ -$hunk_from_line,$from_length +$hunk_from_line,$to_length \@\@\n$line";
+  my $value_len = length(encode('UTF-8', $value));
+
+  print(
+    pack(
+      "QQQa$value_len",
+      $byte_offset,
+      $byte_offset + length(encode('UTF-8', $line)),
+      $value_len,
+      $value,
+    )
+  );
+}
+
+while (<STDIN>) {
+  $line = $_;
+
+  if (%diff && %hunk) {
+    if ($hunk_from_line >= $hunk{from_end_line} && $hunk_to_line >= $hunk{to_end_line}) {
+      annotate_hunk();
+      undef $hunk_from_line;
+      undef $hunk_to_line;
+      undef %hunk;
+    }
+  }
+
+  if (%diff) {
+    if (%hunk) {
+      if (/^\-.*$/) {
+        annotate_line();
+        $hunk_from_line++;
+      } elsif (/^\+.*$/) {
+        annotate_line();
+        $hunk_to_line++;
+      } elsif (/^ .*$/) {
+        $hunk_from_line++;
+        $hunk_to_line++;
+      }
+
+      $hunk{value} = "$hunk{value}$line";
+    } else {
+      if (/^\+\+\+ (.+)$/) {
+        $diff{'filenames'}{'new'} = $1;
+        $diff{'header'} = "$diff{header}$line";
+      } elsif (/^\@\@ -([0-9]+),([0-9]+) \+([0-9]+),([0-9]+) \@\@/) {
+        %hunk = (
+          start => $byte_offset,
+          from_start_line => $1,
+          from_end_line => $1 + $2,
+          to_start_line => $3,
+          to_end_line => $3 + $4,
+          value => "$line",
+        );
+
+        $hunk_from_line = $hunk{from_start_line};
+        $hunk_to_line = $hunk{to_start_line};
+      } else {
+        annotate_diff();
+        undef %diff;
+      }
+    }
+
+    $diff{value} = "$diff{value}$line";
+  } elsif (/^\-\-\- (.+)$/) {
+    %diff = (
+      start => $byte_offset,
+      filenames => { original => $1 },
+      value => "$line",
+      header => "$line",
+    );
+  }
+
+  $byte_offset += length(encode('UTF-8', $line));
+}
+
+if (%hunk) {
+  annotate_hunk();
+}
+
+if (%diff) {
+  annotate_diff();
+}
