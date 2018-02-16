@@ -6,3 +6,4 @@ import:
 - package: github.com/ericfreese/escseq
 - package: github.com/nsf/termbox-go
 - package: github.com/spf13/pflag
+- package: github.com/robertkrimen/otto
