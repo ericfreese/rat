@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 use strict;
-use bytes;
+use Encode 'encode';
 
 my $regex;
 my $value_match = 0;
@@ -39,7 +39,7 @@ while ($input =~ /$regex/g) {
   my $value_end = $+[$value_match];
 
   my $value = substr($input, $value_start, ($value_end - $value_start));
-  my $value_len = bytes::length($value);
+  my $value_len = length(encode('UTF-8', $value));
 
   print(pack("QQQa$value_len", $boundary_start, $boundary_end, $value_len, $value));
 }
