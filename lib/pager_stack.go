@@ -4,6 +4,7 @@ type PagerStack interface {
 	Widget
 	Show(int)
 	Last() Pager
+	ParentPager() Pager
 	Push(p Pager)
 	Pop()
 	Size() int
@@ -191,7 +192,7 @@ func (ps *pagerStack) Destroy() {
 	}
 }
 
-func (ps *pagerStack) parentPager() Pager {
+func (ps *pagerStack) ParentPager() Pager {
 	if ps.size == 0 {
 		return nil
 	}
@@ -205,21 +206,21 @@ func (ps *pagerStack) parentPager() Pager {
 
 func (ps *pagerStack) MoveParentCursor(delta int) {
 	if len(ps.lastEl.creatingKeys) > 0 && ps.size > 1 && ps.numToShow > 1 {
-		ps.parentPager().MoveCursor(delta)
-		ps.parentPager().HandleEvent(KeySequenceFromString(ps.lastEl.creatingKeys))
+		ps.ParentPager().MoveCursor(delta)
+		ps.ParentPager().HandleEvent(KeySequenceFromString(ps.lastEl.creatingKeys))
 	}
 }
 
 func (ps *pagerStack) ParentCursorUp() {
 	if len(ps.lastEl.creatingKeys) > 0 && ps.size > 1 && ps.numToShow > 1 {
-		ps.parentPager().CursorUp()
-		ps.parentPager().HandleEvent(KeySequenceFromString(ps.lastEl.creatingKeys))
+		ps.ParentPager().CursorUp()
+		ps.ParentPager().HandleEvent(KeySequenceFromString(ps.lastEl.creatingKeys))
 	}
 }
 
 func (ps *pagerStack) ParentCursorDown() {
 	if len(ps.lastEl.creatingKeys) > 0 && ps.size > 1 && ps.numToShow > 1 {
-		ps.parentPager().CursorDown()
-		ps.parentPager().HandleEvent(KeySequenceFromString(ps.lastEl.creatingKeys))
+		ps.ParentPager().CursorDown()
+		ps.ParentPager().HandleEvent(KeySequenceFromString(ps.lastEl.creatingKeys))
 	}
 }

@@ -3,11 +3,13 @@ package rat
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"time"
 
 	"github.com/nsf/termbox-go"
+	"github.com/robertkrimen/otto"
 )
 
 var (
@@ -18,6 +20,7 @@ var (
 	cfg           Configurer
 	annotatorsDir string
 	keyStack      []keyEvent
+	vm            *otto.Otto
 
 	widgets WidgetStack
 	pagers  PagerStack
@@ -36,6 +39,7 @@ func Init() error {
 	eventHandlers = NewHandlerRegistry()
 	modes = make(map[string]Mode)
 	cfg = NewConfigurer()
+	vm = InitJs()
 
 	widgets.Push(pagers)
 	prompt = NewConfirmPrompt()
@@ -67,6 +71,15 @@ func initTermbox() error {
 
 func SetAnnotatorsDir(dir string) {
 	annotatorsDir = dir
+}
+
+func LoadJSConfig(rd io.Reader) {
+	if b, err := ioutil.ReadAll(rd); err == nil {
+		_, err := vm.Run(string(b))
+		if err != nil {
+			panic(err)
+		}
+	}
 }
 
 func LoadConfig(rd io.Reader) {

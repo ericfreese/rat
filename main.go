@@ -41,8 +41,8 @@ func main() {
 
 	defer rat.Close()
 
-	if config, err := os.Open(filepath.Join(rat.ConfigDir, "ratrc")); err == nil {
-		rat.LoadConfig(config)
+	if config, err := os.Open(filepath.Join(rat.ConfigDir, "rat.js")); err == nil {
+		rat.LoadJSConfig(config)
 		config.Close()
 	}
 
