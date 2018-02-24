@@ -12,10 +12,12 @@ type Pager interface {
 	Widget
 	AddEventHandler(keyStr string, handler EventHandler)
 	Reload()
+	MoveCursor(offset int)
 	CursorUp()
 	CursorDown()
 	CursorFirstLine()
 	CursorLastLine()
+	Scroll(int)
 	ScrollUp()
 	ScrollDown()
 	PageUp()
@@ -142,7 +144,7 @@ func (p *pager) MoveCursorToY(cursorY int) {
 	}
 }
 
-func (p *pager) MoveCursorY(delta int) {
+func (p *pager) MoveCursor(delta int) {
 	p.MoveCursorToY(p.cursorY + delta)
 }
 
@@ -166,7 +168,7 @@ func (p *pager) ScrollToY(scrollY int) {
 	}
 }
 
-func (p *pager) ScrollY(delta int) {
+func (p *pager) Scroll(delta int) {
 	p.ScrollToY(p.scrollOffsetY + delta)
 }
 
@@ -175,11 +177,11 @@ func (p *pager) CursorY() int {
 }
 
 func (p *pager) CursorUp() {
-	p.MoveCursorY(-1)
+	p.MoveCursor(-1)
 }
 
 func (p *pager) CursorDown() {
-	p.MoveCursorY(1)
+	p.MoveCursor(1)
 }
 
 func (p *pager) CursorFirstLine() {
@@ -191,19 +193,19 @@ func (p *pager) CursorLastLine() {
 }
 
 func (p *pager) ScrollUp() {
-	p.ScrollY(-1)
+	p.Scroll(-1)
 }
 
 func (p *pager) ScrollDown() {
-	p.ScrollY(1)
+	p.Scroll(1)
 }
 
 func (p *pager) PageUp() {
-	p.ScrollY(-p.contentBox.Height())
+	p.Scroll(-p.contentBox.Height())
 }
 
 func (p *pager) PageDown() {
-	p.ScrollY(p.contentBox.Height())
+	p.Scroll(p.contentBox.Height())
 }
 
 func (p *pager) Reload() {
