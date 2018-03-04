@@ -2,21 +2,21 @@ package rat
 
 type Mode interface {
 	RegisterAnnotator(func(Context) Annotator)
-	RegisterEventHandler(func(Context) func(Pager))
+	RegisterEventHandler(func(Context, Pager))
 	InitAnnotators(Context) func() []Annotator
 	AddEventHandlers(Context) func(Pager)
 }
 
 type mode struct {
 	annotatorCtors     []func(Context) Annotator
-	eventHandlerAdders []func(Context) func(Pager)
+	eventHandlerAdders []func(Context, Pager)
 }
 
 func NewMode() Mode {
 	m := &mode{}
 
 	m.annotatorCtors = make([]func(Context) Annotator, 0, 8)
-	m.eventHandlerAdders = make([]func(Context) func(Pager), 0, 8)
+	m.eventHandlerAdders = make([]func(Context, Pager), 0, 8)
 
 	return m
 }
@@ -36,7 +36,7 @@ func (m *mode) InitAnnotators(ctx Context) func() []Annotator {
 func (m *mode) AddEventHandlers(ctx Context) func(Pager) {
 	return func(p Pager) {
 		for _, adder := range m.eventHandlerAdders {
-			adder(ctx)(p)
+			adder(ctx, p)
 		}
 	}
 }
@@ -45,6 +45,6 @@ func (m *mode) RegisterAnnotator(ctor func(Context) Annotator) {
 	m.annotatorCtors = append(m.annotatorCtors, ctor)
 }
 
-func (m *mode) RegisterEventHandler(adder func(Context) func(Pager)) {
+func (m *mode) RegisterEventHandler(adder func(Context, Pager)) {
 	m.eventHandlerAdders = append(m.eventHandlerAdders, adder)
 }
