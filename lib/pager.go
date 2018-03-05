@@ -8,6 +8,55 @@ import (
 	termbox "github.com/nsf/termbox-go"
 )
 
+type PagerLayout interface {
+	Layout
+	GetHeaderBox() Box
+	GetContentBox() Box
+}
+
+type pagerLayout struct {
+	box        Box
+	headerBox  Box
+	contentBox Box
+}
+
+func (pl *pagerLayout) layout() {
+	pl.headerBox = NewBox(pl.box.Left(), pl.box.Top(), pl.box.Width(), 1)
+	pl.contentBox = NewBox(pl.box.Left(), pl.box.Top()+1, pl.box.Width(), pl.box.Height()-1)
+}
+
+func (pl *pagerLayout) SetBox(box Box) {
+	pl.box = box
+	pl.layout()
+}
+
+func (pl *pagerLayout) GetBox() Box {
+	return pl.box
+}
+
+func (pl *pagerLayout) GetHeaderBox() Box {
+	return pl.headerBox
+}
+
+func (pl *pagerLayout) GetContentBox() Box {
+	return pl.contentBox
+}
+
+func (pl *pagerLayout) drawHeader(title, info string) {
+	paddedInfo := StyledRunesFromString(fmt.Sprintf(" %s ", info), gTermStyles.Get(termbox.AttrBold, termbox.ColorDefault))
+
+	pl.GetHeaderBox().DrawStyledRunes(1, 0, StyledRunesFromString(title, gTermStyles.Get(termbox.AttrUnderline, termbox.ColorDefault)))
+	pl.GetHeaderBox().DrawStyledRunes(pl.GetHeaderBox().Width()-len(paddedInfo), 0, paddedInfo)
+}
+
+func (pl *pagerLayout) drawContent(cursor int, lines [][]StyledRune) {
+	pl.GetContentBox().DrawStyledRune(1, cursor, NewStyledRune('▶', gTermStyles.Get(termbox.ColorRed, termbox.ColorDefault)))
+
+	for y, line := range lines {
+		pl.contentBox.DrawStyledRunes(3, y, line)
+	}
+}
+
 type Pager interface {
 	Widget
 	Window
@@ -22,10 +71,7 @@ type pager struct {
 	buffer        Buffer
 	stop          chan bool
 	eventHandlers HandlerRegistry
-
-	box        Box
-	headerBox  Box
-	contentBox Box
+	*pagerLayout
 	Window
 }
 
@@ -35,9 +81,10 @@ func newPager(title string, modeNames string, ctx Context) *pager {
 	p.title = title
 	p.ctx = ctx
 	p.eventHandlers = NewHandlerRegistry()
+	p.pagerLayout = &pagerLayout{}
 
 	p.Window = NewWindow(
-		func() int { return p.contentBox.Height() },
+		func() int { return p.GetContentBox().Height() },
 		func() int { return p.buffer.NumLines() },
 	)
 
@@ -87,40 +134,19 @@ func (p *pager) HandleEvent(ks []keyEvent) bool {
 	return false
 }
 
-func (p *pager) SetBox(box Box) {
-	p.box = box
-	p.layout()
-}
-
-func (p *pager) GetBox() Box {
-	return p.box
-}
-
-func (p *pager) layout() {
-	p.headerBox = NewBox(p.box.Left(), p.box.Top(), p.box.Width(), 1)
-	p.contentBox = NewBox(p.box.Left(), p.box.Top()+1, p.box.Width(), p.box.Height()-1)
-}
-
-func (p *pager) drawHeader() {
-	p.headerBox.DrawStyledRunes(1, 0, StyledRunesFromString(p.title, gTermStyles.Get(termbox.AttrUnderline, termbox.ColorDefault)))
-
-	pagerInfo := StyledRunesFromString(fmt.Sprintf(" %d %d/%d ", p.buffer.NumAnnotations(), p.cursorY+1, p.buffer.NumLines()), gTermStyles.Get(termbox.AttrBold, termbox.ColorDefault))
-	p.headerBox.DrawStyledRunes(p.headerBox.Width()-len(pagerInfo), 0, pagerInfo)
-}
-
-func (p *pager) drawContent() {
-	p.contentBox.DrawStyledRune(1, p.cursorY-p.scrollOffsetY, NewStyledRune('▶', gTermStyles.Get(termbox.ColorRed, termbox.ColorDefault)))
-
-	for y, line := range p.buffer.StyledLines(p.scrollOffsetY, p.contentBox.Height()) {
-		p.contentBox.DrawStyledRunes(3, y, []StyledRune(line))
-	}
-}
-
 func (p *pager) Render() {
 	p.buffer.Lock()
-	p.drawHeader()
-	p.drawContent()
-	p.buffer.Unlock()
+	defer p.buffer.Unlock()
+
+	p.drawHeader(
+		p.title,
+		fmt.Sprintf("%d %d/%d", p.buffer.NumAnnotations(), p.Window.GetCursor()+1, p.buffer.NumLines()),
+	)
+
+	p.drawContent(
+		p.Window.GetCursor()-p.Window.GetScroll(),
+		p.buffer.StyledLines(p.Window.GetScroll(), p.GetContentBox().Height()),
+	)
 }
 
 func (p *pager) Reload() {
