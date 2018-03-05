@@ -8,35 +8,35 @@ func init() {
 	}
 
 	actions["cursor-up"] = func() {
-		pagers.Last().CursorUp()
+		pagers.Last().MoveCursor(-1)
 	}
 
 	actions["cursor-down"] = func() {
-		pagers.Last().CursorDown()
+		pagers.Last().MoveCursor(1)
 	}
 
 	actions["parent-cursor-up"] = func() {
-		pagers.ParentCursorUp()
+		pagers.MoveParentCursor(-1)
 	}
 
 	actions["parent-cursor-down"] = func() {
-		pagers.ParentCursorDown()
+		pagers.MoveParentCursor(1)
 	}
 
 	actions["cursor-first-line"] = func() {
-		pagers.Last().CursorFirstLine()
+		pagers.Last().MoveCursorTo(0)
 	}
 
 	actions["cursor-last-line"] = func() {
-		pagers.Last().CursorLastLine()
+		pagers.Last().MoveCursorTo(-1)
 	}
 
 	actions["scroll-up"] = func() {
-		pagers.Last().ScrollUp()
+		pagers.Last().Scroll(-1)
 	}
 
 	actions["scroll-down"] = func() {
-		pagers.Last().ScrollDown()
+		pagers.Last().Scroll(1)
 	}
 
 	actions["page-up"] = func() {

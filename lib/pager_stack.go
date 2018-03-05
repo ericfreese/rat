@@ -11,8 +11,6 @@ type PagerStack interface {
 	AddChild(parent Pager, child Pager, creatingKeys string)
 	PushAsChild(Pager, string)
 	MoveParentCursor(int)
-	ParentCursorUp()
-	ParentCursorDown()
 }
 
 type pagerStack struct {
@@ -207,20 +205,6 @@ func (ps *pagerStack) ParentPager() Pager {
 func (ps *pagerStack) MoveParentCursor(delta int) {
 	if len(ps.lastEl.creatingKeys) > 0 && ps.size > 1 && ps.numToShow > 1 {
 		ps.ParentPager().MoveCursor(delta)
-		ps.ParentPager().HandleEvent(KeySequenceFromString(ps.lastEl.creatingKeys))
-	}
-}
-
-func (ps *pagerStack) ParentCursorUp() {
-	if len(ps.lastEl.creatingKeys) > 0 && ps.size > 1 && ps.numToShow > 1 {
-		ps.ParentPager().CursorUp()
-		ps.ParentPager().HandleEvent(KeySequenceFromString(ps.lastEl.creatingKeys))
-	}
-}
-
-func (ps *pagerStack) ParentCursorDown() {
-	if len(ps.lastEl.creatingKeys) > 0 && ps.size > 1 && ps.numToShow > 1 {
-		ps.ParentPager().CursorDown()
 		ps.ParentPager().HandleEvent(KeySequenceFromString(ps.lastEl.creatingKeys))
 	}
 }

@@ -10,18 +10,9 @@ import (
 
 type Pager interface {
 	Widget
+	Window
 	AddEventHandler(keyStr string, handler EventHandler)
 	Reload()
-	MoveCursor(offset int)
-	CursorUp()
-	CursorDown()
-	CursorFirstLine()
-	CursorLastLine()
-	Scroll(int)
-	ScrollUp()
-	ScrollDown()
-	PageUp()
-	PageDown()
 }
 
 type pager struct {
@@ -29,14 +20,13 @@ type pager struct {
 	modes         []Mode
 	ctx           Context
 	buffer        Buffer
-	scrollOffsetY int
-	cursorY       int
 	stop          chan bool
 	eventHandlers HandlerRegistry
 
 	box        Box
 	headerBox  Box
 	contentBox Box
+	Window
 }
 
 func newPager(title string, modeNames string, ctx Context) *pager {
@@ -45,6 +35,11 @@ func newPager(title string, modeNames string, ctx Context) *pager {
 	p.title = title
 	p.ctx = ctx
 	p.eventHandlers = NewHandlerRegistry()
+
+	p.Window = NewWindow(
+		func() int { return p.contentBox.Height() },
+		func() int { return p.buffer.NumLines() },
+	)
 
 	splitModeNames := strings.Split(modeNames, ",")
 	p.modes = make([]Mode, 0, len(splitModeNames))
@@ -82,7 +77,7 @@ func (p *pager) HandleEvent(ks []keyEvent) bool {
 	p.buffer.Lock()
 	defer p.buffer.Unlock()
 
-	ctx := NewContextFromAnnotations(p.buffer.AnnotationsForLine(p.cursorY))
+	ctx := NewContextFromAnnotations(p.buffer.AnnotationsForLine(p.Window.GetCursor()))
 
 	if handler := p.eventHandlers.FindCtx(ks, ctx); handler != nil {
 		handler.Call(ctx)
@@ -126,86 +121,6 @@ func (p *pager) Render() {
 	p.drawHeader()
 	p.drawContent()
 	p.buffer.Unlock()
-}
-
-func (p *pager) MoveCursorToY(cursorY int) {
-	if cursorY < 0 {
-		p.cursorY = 0
-	} else if cursorY >= p.buffer.NumLines() {
-		p.cursorY = p.buffer.NumLines() - 1
-	} else {
-		p.cursorY = cursorY
-	}
-
-	if p.cursorY < p.scrollOffsetY {
-		p.ScrollToY(p.cursorY)
-	} else if p.cursorY > p.scrollOffsetY+p.contentBox.Height()-1 {
-		p.ScrollToY(p.cursorY - (p.contentBox.Height() - 1))
-	}
-}
-
-func (p *pager) MoveCursor(delta int) {
-	p.MoveCursorToY(p.cursorY + delta)
-}
-
-func (p *pager) ScrollToY(scrollY int) {
-	if scrollY < 0 {
-		p.scrollOffsetY = 0
-	} else if scrollY >= p.buffer.NumLines()-p.contentBox.Height() {
-		if p.buffer.NumLines() > p.contentBox.Height() {
-			p.scrollOffsetY = p.buffer.NumLines() - p.contentBox.Height()
-		} else {
-			p.scrollOffsetY = 0
-		}
-	} else {
-		p.scrollOffsetY = scrollY
-	}
-
-	if p.cursorY < p.scrollOffsetY {
-		p.MoveCursorToY(p.scrollOffsetY)
-	} else if p.cursorY > p.scrollOffsetY+p.contentBox.Height()-1 {
-		p.MoveCursorToY(p.scrollOffsetY + p.contentBox.Height() - 1)
-	}
-}
-
-func (p *pager) Scroll(delta int) {
-	p.ScrollToY(p.scrollOffsetY + delta)
-}
-
-func (p *pager) CursorY() int {
-	return p.cursorY
-}
-
-func (p *pager) CursorUp() {
-	p.MoveCursor(-1)
-}
-
-func (p *pager) CursorDown() {
-	p.MoveCursor(1)
-}
-
-func (p *pager) CursorFirstLine() {
-	p.MoveCursorToY(0)
-}
-
-func (p *pager) CursorLastLine() {
-	p.MoveCursorToY(p.buffer.NumLines())
-}
-
-func (p *pager) ScrollUp() {
-	p.Scroll(-1)
-}
-
-func (p *pager) ScrollDown() {
-	p.Scroll(1)
-}
-
-func (p *pager) PageUp() {
-	p.Scroll(-p.contentBox.Height())
-}
-
-func (p *pager) PageDown() {
-	p.Scroll(p.contentBox.Height())
 }
 
 func (p *pager) Reload() {
