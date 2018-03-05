@@ -69,7 +69,6 @@ type pager struct {
 	modes         []Mode
 	ctx           Context
 	buffer        Buffer
-	stop          chan bool
 	eventHandlers HandlerRegistry
 	*pagerLayout
 	Window
