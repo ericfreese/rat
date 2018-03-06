@@ -99,14 +99,6 @@ func newPager(title string, modeNames string, ctx Context) *pager {
 	return p
 }
 
-func (p *pager) startAnnotators() {
-	for _, m := range p.modes {
-		for _, a := range m.InitAnnotators(p.ctx)() {
-			go p.buffer.AnnotateWith(a)
-		}
-	}
-}
-
 func (p *pager) AddEventHandler(keyStr string, handler EventHandler) {
 	p.eventHandlers.Add(KeySequenceFromString(keyStr), handler)
 }
@@ -158,8 +150,7 @@ func NewReadPager(rd io.Reader, title string, modeNames string, ctx Context) Pag
 		mode.AddEventHandlers(ctx)(p)
 	}
 
-	p.buffer = NewBuffer(rd)
-	p.startAnnotators()
+	p.buffer = NewBuffer(rd, p.annotators)
 
 	return p
 }
@@ -202,6 +193,5 @@ func (cp *cmdPager) RunCommand() {
 		panic(err)
 	}
 
-	cp.buffer = NewBuffer(cp.command)
-	cp.pager.startAnnotators()
+	cp.buffer = NewBuffer(cp.command, cp.pager.annotators)
 }

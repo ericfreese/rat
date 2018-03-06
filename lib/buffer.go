@@ -27,7 +27,7 @@ type buffer struct {
 	sync.Mutex
 }
 
-func NewBuffer(rd io.Reader) Buffer {
+func NewBuffer(rd io.Reader, annotators []Annotator) Buffer {
 	b := &buffer{}
 
 	b.stream = NewStream()
@@ -37,6 +37,10 @@ func NewBuffer(rd io.Reader) Buffer {
 	b.lines[0] = NewLine(0, 0)
 
 	go b.processTokens(NewScanner(rd))
+
+	for _, a := range annotators {
+		go b.AnnotateWith(a)
+	}
 
 	return b
 }
