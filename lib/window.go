@@ -44,7 +44,15 @@ func (w *window) MoveCursorTo(cursor int) {
 }
 
 func (w *window) MoveCursor(delta int) {
-	w.MoveCursorTo(w.cursor + delta)
+	dest := w.cursor + delta
+
+	if dest < 0 {
+		dest = 0
+	} else if dest > w.getTotalHeight() {
+		dest = w.getTotalHeight() - 1
+	}
+
+	w.MoveCursorTo(dest)
 }
 
 func (w *window) ScrollTo(scrollY int) {
