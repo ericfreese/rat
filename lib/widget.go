@@ -1,8 +1,12 @@
 package rat
 
-type Widget interface {
+type Layout interface {
 	SetBox(Box)
 	GetBox() Box
+}
+
+type Widget interface {
+	Layout
 	Render()
 	HandleEvent([]keyEvent) bool
 	Destroy()

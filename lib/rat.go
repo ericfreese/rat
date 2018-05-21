@@ -6,10 +6,11 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
+	"github.com/ericfreese/otto"
 	"github.com/nsf/termbox-go"
-	"github.com/robertkrimen/otto"
 )
 
 var (
@@ -17,14 +18,13 @@ var (
 	done          chan bool
 	eventHandlers HandlerRegistry
 	modes         map[string]Mode
-	cfg           Configurer
 	annotatorsDir string
 	keyStack      []keyEvent
 	vm            *otto.Otto
 
 	widgets WidgetStack
 	pagers  PagerStack
-	prompt  ConfirmPrompt
+	gPrompt Prompt
 )
 
 func Init() error {
@@ -38,13 +38,14 @@ func Init() error {
 	done = make(chan bool)
 	eventHandlers = NewHandlerRegistry()
 	modes = make(map[string]Mode)
-	cfg = NewConfigurer()
 	vm = InitJs()
 
 	widgets.Push(pagers)
-	prompt = NewConfirmPrompt()
+	gPrompt = NewPrompt()
 
 	AddEventHandler("C-c", Quit)
+
+	loadJavascript()
 
 	w, h := termbox.Size()
 	layout(w, h)
@@ -73,17 +74,33 @@ func SetAnnotatorsDir(dir string) {
 	annotatorsDir = dir
 }
 
-func LoadJSConfig(rd io.Reader) {
+func loadJavascript() {
+	if files, err := ioutil.ReadDir(ConfigDir); err == nil {
+		for _, f := range files {
+			if filepath.Ext(f.Name()) != ".js" || f.Name() == "rat.js" {
+				continue
+			}
+
+			if file, openErr := os.Open(filepath.Join(ConfigDir, f.Name())); openErr == nil {
+				evalJavascript(file)
+				file.Close()
+			}
+		}
+	}
+
+	if file, err := os.Open(filepath.Join(ConfigDir, "rat.js")); err == nil {
+		evalJavascript(file)
+		file.Close()
+	}
+}
+
+func evalJavascript(rd io.Reader) {
 	if b, err := ioutil.ReadAll(rd); err == nil {
 		_, err := vm.Run(string(b))
 		if err != nil {
 			panic(err)
 		}
 	}
-}
-
-func LoadConfig(rd io.Reader) {
-	cfg.Process(rd)
 }
 
 func Close() {
@@ -143,7 +160,7 @@ func PopPager() {
 }
 
 func Confirm(message string, callback func()) {
-	prompt.Confirm(message, callback)
+	gPrompt.Confirm(message, callback)
 }
 
 func ConfirmExec(cmd string, ctx Context, callback func()) {
@@ -173,13 +190,13 @@ func RegisterMode(name string, mode Mode) {
 
 func layout(width, height int) {
 	widgets.SetBox(NewBox(0, 0, width, height-1))
-	prompt.SetBox(NewBox(0, height-1, width, 1))
+	gPrompt.SetBox(NewBox(0, height-1, width, 1))
 }
 
 func render() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	widgets.Render()
-	prompt.Render()
+	gPrompt.Render()
 	termbox.Flush()
 }
 
@@ -188,7 +205,7 @@ func AddEventHandler(keyStr string, handler func()) {
 }
 
 func handleEvent(ks []keyEvent) bool {
-	if prompt.HandleEvent(ks) {
+	if gPrompt.HandleEvent(ks) {
 		return true
 	}
 

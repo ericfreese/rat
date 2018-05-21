@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	rat "github.com/ericfreese/rat/lib"
 	flag "github.com/spf13/pflag"
@@ -41,13 +40,9 @@ func main() {
 
 	defer rat.Close()
 
-	if config, err := os.Open(filepath.Join(rat.ConfigDir, "rat.js")); err == nil {
-		rat.LoadJSConfig(config)
-		config.Close()
-	}
-
 	if len(flags.cmd) > 0 {
-		rat.PushPager(rat.NewCmdPager(flags.mode, flags.cmd, rat.Context{}))
+		wd, _ := os.Getwd()
+		rat.PushPager(rat.NewCmdPager(flags.mode, flags.cmd, wd, rat.Context{}))
 	} else {
 		rat.PushPager(rat.NewReadPager(os.Stdin, "<stdin>", flags.mode, rat.Context{}))
 	}

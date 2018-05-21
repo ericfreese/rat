@@ -11,6 +11,7 @@ type PagerStack interface {
 	AddChild(parent Pager, child Pager, creatingKeys string)
 	PushAsChild(Pager, string)
 	MoveParentCursor(int)
+	GetPagers() []Pager
 }
 
 type pagerStack struct {
@@ -90,6 +91,16 @@ func (ps *pagerStack) SetBox(b Box) {
 	ps.validLayout = false
 }
 
+func (ps *pagerStack) lastPagers(n int) []Pager {
+	pagers := make([]Pager, n)
+
+	for i, el := 0, ps.lastEl; i < n && el != nil; i, el = i+1, el.previous {
+		pagers[n-i-1] = el.pager
+	}
+
+	return pagers
+}
+
 func (ps *pagerStack) visiblePagers() []Pager {
 	var n int
 
@@ -99,13 +110,7 @@ func (ps *pagerStack) visiblePagers() []Pager {
 		n = ps.numToShow
 	}
 
-	pagers := make([]Pager, n)
-
-	for i, el := 0, ps.lastEl; i < n && el != nil; i, el = i+1, el.previous {
-		pagers[n-i-1] = el.pager
-	}
-
-	return pagers
+	return ps.lastPagers(n)
 }
 
 func (ps *pagerStack) splitHorizontal() bool {
@@ -207,4 +212,8 @@ func (ps *pagerStack) MoveParentCursor(delta int) {
 		ps.ParentPager().MoveCursor(delta)
 		ps.ParentPager().HandleEvent(KeySequenceFromString(ps.lastEl.creatingKeys))
 	}
+}
+
+func (ps *pagerStack) GetPagers() []Pager {
+	return ps.lastPagers(ps.size)
 }

@@ -3,14 +3,21 @@ package rat
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 )
 
 type Pager interface {
 	Widget
 	Window
-	AddEventHandler(keyStr string, handler EventHandler)
+	AddAnnotator(Annotator)
+	AddEventHandler(string, EventHandler)
 	Reload()
+	GetContext() Context
+	GetWorkingDir() string
+	AddDestroyHook(func())
+	MoveCursorNext(string)
+	MoveCursorPrevious(string)
 }
 
 type pager struct {
@@ -18,18 +25,22 @@ type pager struct {
 	modes         []Mode
 	ctx           Context
 	buffer        Buffer
+	annotators    []Annotator
 	eventHandlers HandlerRegistry
+	destroyHooks  []func()
 	*pagerLayout
 	Window
 }
 
-func newPager(title string, modeNames string, ctx Context) *pager {
+func newPager(title, modeNames string, ctx Context) *pager {
 	p := &pager{}
 
 	p.title = title
 	p.ctx = ctx
 	p.eventHandlers = NewHandlerRegistry()
 	p.pagerLayout = &pagerLayout{}
+	p.annotators = make([]Annotator, 0, 8)
+	p.destroyHooks = make([]func(), 0, 0)
 
 	p.Window = NewWindow(
 		func() int { return p.GetContentBox().Height() },
@@ -48,8 +59,20 @@ func newPager(title string, modeNames string, ctx Context) *pager {
 	return p
 }
 
+func (p *pager) AddAnnotator(a Annotator) {
+	p.annotators = append(p.annotators, a)
+
+	if p.buffer != nil {
+		go p.buffer.AnnotateWith(a)
+	}
+}
+
 func (p *pager) AddEventHandler(keyStr string, handler EventHandler) {
 	p.eventHandlers.Add(KeySequenceFromString(keyStr), handler)
+}
+
+func (p *pager) AddDestroyHook(hook func()) {
+	p.destroyHooks = append(p.destroyHooks, hook)
 }
 
 func (p *pager) Stop() {
@@ -57,6 +80,10 @@ func (p *pager) Stop() {
 }
 
 func (p *pager) Destroy() {
+	for _, hook := range p.destroyHooks {
+		hook()
+	}
+
 	p.Stop()
 }
 
@@ -92,11 +119,32 @@ func (p *pager) Render() {
 func (p *pager) Reload() {
 }
 
+func (p *pager) GetContext() Context {
+	return p.ctx
+}
+
+func (p *pager) GetWorkingDir() string {
+	wd, _ := os.Getwd()
+	return wd
+}
+
+func (p *pager) MoveCursorNext(annotationClass string) {
+	next := p.buffer.FindNextAnnotation(p.GetCursor(), annotationClass)
+
+	if next >= 0 {
+		p.MoveCursorTo(next)
+	}
+}
+
+func (p *pager) MoveCursorPrevious(annotationClass string) {
+	p.MoveCursorTo(p.buffer.FindPreviousAnnotation(p.GetCursor(), annotationClass))
+}
+
 func NewReadPager(rd io.Reader, title string, modeNames string, ctx Context) Pager {
 	p := newPager(title, modeNames, ctx)
 
 	for _, mode := range p.modes {
-		mode.AddEventHandlers(ctx)(p)
+		mode.DecoratePager(p)
 	}
 
 	p.buffer = NewBuffer(rd, p.annotators)
@@ -108,16 +156,18 @@ type cmdPager struct {
 	*pager
 	cmd     string
 	command ShellCommand
+	wd      string
 }
 
-func NewCmdPager(modeNames string, cmd string, ctx Context) Pager {
+func NewCmdPager(modeNames, cmd, wd string, ctx Context) Pager {
 	cp := &cmdPager{}
 
 	cp.cmd = cmd
+	cp.wd = wd
 	cp.pager = newPager(cmd, modeNames, ctx)
 
 	for _, mode := range cp.modes {
-		mode.AddEventHandlers(ctx)(cp)
+		mode.DecoratePager(cp)
 	}
 
 	cp.RunCommand()
@@ -138,9 +188,13 @@ func (cp *cmdPager) Reload() {
 func (cp *cmdPager) RunCommand() {
 	var err error
 
-	if cp.command, err = NewShellCommand(cp.cmd, cp.ctx); err != nil {
+	if cp.command, err = NewShellCommand(cp.cmd, cp.wd, cp.ctx); err != nil {
 		panic(err)
 	}
 
 	cp.buffer = NewBuffer(cp.command, cp.pager.annotators)
+}
+
+func (cp *cmdPager) GetWorkingDir() string {
+	return cp.wd
 }

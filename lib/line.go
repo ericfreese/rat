@@ -1,8 +1,7 @@
 package rat
 
 type Line interface {
-	Start() int
-	End() int
+	Region
 	SetEnd(int)
 }
 

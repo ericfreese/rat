@@ -14,6 +14,8 @@ type Buffer interface {
 	AnnotationsForLine(line int) []Annotation
 	NumAnnotations() int
 	NumLines() int
+	FindNextAnnotation(int, string) int
+	FindPreviousAnnotation(int, string) int
 	StyledLines(start int, numLines int) [][]StyledRune
 	io.Closer
 }
@@ -71,6 +73,27 @@ func (b *buffer) NumAnnotations() int {
 
 func (b *buffer) NumLines() int {
 	return len(b.lines)
+}
+
+func (b *buffer) FindNextAnnotation(line int, class string) int {
+	b.Lock()
+	defer b.Unlock()
+
+	for i := line + 1; i < len(b.lines); i++ {
+		annotations := b.annotations.Intersecting(b.lines[i])
+
+		for _, a := range annotations {
+			if a.Class() == class {
+				return i
+			}
+		}
+	}
+
+	return -1
+}
+
+func (b *buffer) FindPreviousAnnotation(int, string) int {
+	return -1
 }
 
 func (b *buffer) StyledLines(start, numLines int) [][]StyledRune {

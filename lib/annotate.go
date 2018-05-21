@@ -98,21 +98,22 @@ type matchAnnotator struct {
 	loading  chan bool
 }
 
-func NewMatchAnnotator(cmd, class string, ctx Context) Annotator {
+func NewMatchAnnotator(cmd, wd, class string, ctx Context) Annotator {
 	ma := &matchAnnotator{}
 
 	ma.class = class
 	ma.loading = make(chan bool)
 
-	go ma.loadMatches(cmd, ctx)
+	go ma.loadMatches(cmd, wd, ctx)
 
 	return ma
 }
 
-func (ma *matchAnnotator) loadMatches(cmd string, ctx Context) {
+func (ma *matchAnnotator) loadMatches(cmd, wd string, ctx Context) {
 	defer close(ma.loading)
 
 	command := exec.Command(os.Getenv("SHELL"), "-c", cmd)
+	command.Dir = wd
 	command.Env = ContextEnvironment(ctx)
 	output, _ := command.Output()
 	lines := strings.Split(string(output), "\n")
@@ -237,7 +238,7 @@ type externalAnnotator struct {
 	ctx   Context
 }
 
-func NewExternalAnnotator(cmd, class string, ctx Context) Annotator {
+func NewExternalAnnotator(cmd, workingDir, class string, ctx Context) Annotator {
 	ea := &externalAnnotator{}
 
 	ea.class = class
