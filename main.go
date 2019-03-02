@@ -5,12 +5,13 @@ import (
 	"os"
 	"path/filepath"
 
-	rat "github.com/ericfreese/rat/lib"
+	rat "github.com/jsantiagoh/rat/lib"
 	flag "github.com/spf13/pflag"
 )
 
 var (
-	RatVersion = "0.0.2"
+	// RatVersion is the version of the application
+	RatVersion = "0.1.0"
 )
 
 var flags struct {
@@ -42,8 +43,8 @@ func main() {
 	defer rat.Close()
 
 	if config, err := os.Open(filepath.Join(rat.ConfigDir, "ratrc")); err == nil {
+		defer config.Close()
 		rat.LoadConfig(config)
-		config.Close()
 	}
 
 	if len(flags.cmd) > 0 {

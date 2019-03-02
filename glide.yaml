@@ -1,8 +1,0 @@
-package: github.com/ericfreese/rat
-import:
-- package: github.com/MathieuTurcotte/go-trie
-  subpackages:
-  - gtrie
-- package: github.com/ericfreese/escseq
-- package: github.com/nsf/termbox-go
-- package: github.com/spf13/pflag
