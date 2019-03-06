@@ -1,0 +1,42 @@
+mode contexts
+    annotate match ctx                  -- kubectl config get-contexts -o='name'
+
+    bindkey enter  ctx namespaces       -- >kubectl get namespace --context $ctx -o=jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'
+end
+
+mode namespaces
+    annotate match  ns                  -- kubectl get namespace --context $ctx -o=jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'
+
+    bindkey enter   ns  pods            -- >kubectl get pods --context $ctx -n $ns
+    bindkey s       ns  secrets         -- >kubectl get secrets --context $ctx -n $ns --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}'
+end
+
+mode pods
+    annotate match pod -- kubectl get pods --context $ctx -n $ns -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}'
+
+    bindkey enter   pod     containers  -- >kubectl get pods --context $ctx -n $ns $pod -o go-template --template='{{range .spec.containers}}{{.name}}{{"\n"}}{{end}}'
+    bindkey l       pod     preview     -- kubectl logs -f --context $ctx -n $ns $pod
+    bindkey d       pod                 -- ! kubectl describe pod --context $ctx -n $ns $pod | bat
+    bindkey e       pod                 -- !kubectl exec -ti --context $ctx -n $ns $pod -- bash
+    bindkey S-d     pod                 -- ?!kubectl delete pod --context $ctx -n $ns $pod
+end
+
+mode containers
+    annotate match container -- kubectl get pods $pod --context $ctx -n $ns -o go-template --template='{{range .spec.containers}}{{.name}}{{"\n"}}{{end}}'
+
+    bindkey enter   container           -- !kubectl exec -ti --context $ctx -n $ns $pod -c $container -- bash
+    bindkey l       container preview   -- kubectl logs -f --context $ctx -n $ns $pod -c $container
+end
+
+mode secrets
+    annotate match secret -- kubectl get secrets --context $ctx -n $ns --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}'
+
+    bindkey enter   secret   secretKeys -- >kubectl --context $ctx -n $ns get secret $secret -o json | jq -r '.data | keys[]'
+    bindkey d       secret   preview    -- kubectl --context $ctx -n $ns get secret $secret -o json
+end
+
+mode secretKeys
+    annotate match key -- kubectl --context $ctx -n $ns get secret $secret -o json | jq -r '.data | keys[]'
+
+    bindkey enter  key preview -- >kubectl --context $ctx -n $ns get secret $secret -o json | jq -r ".data.$key" | base64 --decode
+end
