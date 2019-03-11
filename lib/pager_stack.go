@@ -1,5 +1,10 @@
 package rat
 
+import (
+	"math"
+)
+
+// PagerStack is a stack of Pagers
 type PagerStack interface {
 	Widget
 	Show(int)
@@ -20,6 +25,7 @@ type pagerStack struct {
 	eventHandlers HandlerRegistry
 	box           Box
 	validLayout   bool
+	splitFunction func(n, totalSize int) []boxSize
 }
 
 type pagerStackElement struct {
@@ -28,11 +34,13 @@ type pagerStackElement struct {
 	creatingKeys string
 }
 
+// NewPagerStack creates a new instance of PagerStack
 func NewPagerStack() PagerStack {
-	ps := &pagerStack{}
-
-	ps.numToShow = 3
-	ps.eventHandlers = NewHandlerRegistry()
+	ps := &pagerStack{
+		numToShow:     3,
+		eventHandlers: NewHandlerRegistry(),
+		splitFunction: goldenSizes,
+	}
 
 	return ps
 }
@@ -109,15 +117,14 @@ func (ps *pagerStack) visiblePagers() []Pager {
 }
 
 func (ps *pagerStack) splitHorizontal() bool {
-	return ps.box.Width() > 180
+	return ps.box.Width() > 100
 }
 
 func (ps *pagerStack) layout() {
 	pagers := ps.visiblePagers()
 	n := len(pagers)
-	offset := 0
 
-	var totalSize, size int
+	var totalSize int
 
 	if ps.splitHorizontal() {
 		totalSize = ps.box.Width()
@@ -125,19 +132,20 @@ func (ps *pagerStack) layout() {
 		totalSize = ps.box.Height()
 	}
 
-	remaining := totalSize
+	boxSizes := ps.splitFunction(n, totalSize)
 
 	for i, p := range pagers {
-		size = (remaining - (n - i - 1)) / (n - i)
+		bs := boxSizes[i]
 
 		if ps.splitHorizontal() {
-			p.SetBox(NewBox(offset, 0, size, ps.box.Height()))
+			p.SetBox(NewBox(
+				bs.offset, 0,
+				bs.size, ps.box.Height()))
 		} else {
-			p.SetBox(NewBox(0, offset, ps.box.Width(), size))
+			p.SetBox(NewBox(
+				0, bs.offset,
+				ps.box.Width(), bs.size))
 		}
-
-		offset = offset + size + 1
-		remaining = totalSize - offset
 	}
 }
 
@@ -197,9 +205,8 @@ func (ps *pagerStack) parentPager() Pager {
 
 	if ps.size > 1 {
 		return ps.lastEl.previous.pager
-	} else {
-		return ps.lastEl.pager
 	}
+	return ps.lastEl.pager
 }
 
 func (ps *pagerStack) ParentCursorUp() {
@@ -214,4 +221,43 @@ func (ps *pagerStack) ParentCursorDown() {
 		ps.parentPager().CursorDown()
 		ps.parentPager().HandleEvent(KeySequenceFromString(ps.lastEl.creatingKeys))
 	}
+}
+
+type boxSize struct {
+	offset int
+	size   int
+}
+
+// evenSizes is a function that splits the panes in even sizes
+// this was the default behaviour of rat and
+// maybe desirable as a setting
+func evenSizes(n, totalSize int) []boxSize {
+	boxes := make([]boxSize, n)
+	remaining := totalSize
+	var size, offset int
+
+	for i := 0; i < n; i++ {
+		size = (remaining - (n - i - 1)) / (n - i)
+		boxes[i] = boxSize{offset, size}
+		offset = offset + size + 1
+		remaining = totalSize - offset
+	}
+	return boxes
+}
+
+func golden(n, totalSize, offset int) []boxSize {
+	if n <= 1 {
+		return []boxSize{boxSize{offset, totalSize}}
+	}
+	// Split total size
+	big := int(math.Floor(float64(totalSize) / math.Phi))
+	small := totalSize - big - 1
+
+	return append(golden(n-1, small, offset), boxSize{offset + small + 1, big})
+}
+
+// goldenSizes splits panes using the golden ratio
+// of Phi making the active pane bigger
+func goldenSizes(n, totalSize int) []boxSize {
+	return golden(n, totalSize, 0)
 }
