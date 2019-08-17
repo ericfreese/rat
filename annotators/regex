@@ -3,19 +3,25 @@ use strict;
 use Encode 'encode';
 
 my $regex;
-my $value_match = 0;
+
+# If "match", use the entire regex match for the annotation value
+# If "groups", concatenate the capture groups together to form the value
+my $value = "match";
+
+# Which match/group to use for the start/end of the annotation
+# 0 is the full match, capture groups start at 1
 my $boundary_match = 0;
 
 sub invalid_usage {
-  print STDERR "Usage: regex <pattern> [--value-match <group-index>] [--boundary-match <group-index>]";
+  print STDERR "Usage: regex <pattern> [--value {match|groups}] [--boundary-match <group-index>]";
   exit 1;
 }
 
 while (@ARGV > 0) {
   my $arg = shift;
 
-  if ($arg eq "--value-match") {
-    $value_match = shift;
+  if ($arg eq "--value") {
+    $value = shift;
   } elsif ($arg eq "--boundary-match") {
     $boundary_match = shift;
   } elsif (!(defined $regex)) {
@@ -23,6 +29,10 @@ while (@ARGV > 0) {
   } else {
     invalid_usage
   }
+}
+
+if ($value ne "match" && $value ne "groups") {
+  invalid_usage
 }
 
 if (!(defined $regex)) {
@@ -35,11 +45,22 @@ while ($input =~ /$regex/g) {
   my $boundary_start = $-[$boundary_match];
   my $boundary_end = $+[$boundary_match];
 
-  my $value_start = $-[$value_match];
-  my $value_end = $+[$value_match];
+  my $value_out;
 
-  my $value = substr($input, $value_start, ($value_end - $value_start));
-  my $value_len = length(encode('UTF-8', $value));
+  if ($value eq "groups") {
+    $value_out = "";
 
-  print(pack("QQQa$value_len", $boundary_start, $boundary_end, $value_len, $value));
+    for my $i (1 .. $#-) {
+      my $value_start = $-[$i];
+      my $value_end = $+[$i];
+
+      $value_out = $value_out . substr($input, $value_start, ($value_end - $value_start));
+    }
+  } else {
+    $value_out = $value_out . substr($input, $-[0], ($+[0] - $-[0]));
+  }
+
+  my $value_len = length(encode('UTF-8', $value_out));
+
+  print(pack("QQQa$value_len", $boundary_start, $boundary_end, $value_len, $value_out));
 }
