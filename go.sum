@@ -1,0 +1,13 @@
+github.com/MathieuTurcotte/go-trie v0.0.0-20160109194827-907bb848563c h1:mI5XGD29DBxogNvhJ2YKkquqO88FP8HVJ54hD5x3KAs=
+github.com/MathieuTurcotte/go-trie v0.0.0-20160109194827-907bb848563c/go.mod h1:bP4SJgDEO6INcrMz0K6C0bHJlQCZsshmepHmUBcXW4U=
+github.com/ericfreese/escseq v0.0.0-20161002001056-86cde6b44897 h1:krOdhQR+ToDrgZm//7tden4RR8z21xnmLe/0VwjQA8I=
+github.com/ericfreese/escseq v0.0.0-20161002001056-86cde6b44897/go.mod h1:UTXM24aQ9ANm2A3ZFPH0T72J+WIQuVpfpCUo4LYX0d4=
+github.com/mattn/go-runewidth v0.0.0-20170201023540-14207d285c6c/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
+github.com/mattn/go-runewidth v0.0.4 h1:2BvfKmzob6Bmd4YsL0zygOqfdFnK7GR4QL06Do4/p7Y=
+github.com/mattn/go-runewidth v0.0.4/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
+github.com/nsf/termbox-go v0.0.0-20161205194251-abe82ce5fb7a/go.mod h1:IuKpRQcYE1Tfu+oAQqaLisqDeXgjyyltCfsaoYN18NQ=
+github.com/nsf/termbox-go v0.0.0-20190121233118-02980233997d h1:x3S6kxmy49zXVVyhcnrFqxvNVCBPb2KZ9hV2RBdS840=
+github.com/nsf/termbox-go v0.0.0-20190121233118-02980233997d/go.mod h1:IuKpRQcYE1Tfu+oAQqaLisqDeXgjyyltCfsaoYN18NQ=
+github.com/spf13/pflag v0.0.0-20171016164048-1f33b80956cd/go.mod h1:DYY7MBk1bdzusC3SYhjObp+wFpr4gzcvqqNjLnInEg4=
+github.com/spf13/pflag v1.0.3 h1:zPAT6CGy6wXeQ7NtTnaTerfKOsV6V6F8agHXFiazDkg=
+github.com/spf13/pflag v1.0.3/go.mod h1:DYY7MBk1bdzusC3SYhjObp+wFpr4gzcvqqNjLnInEg4=
