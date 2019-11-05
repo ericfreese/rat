@@ -110,6 +110,8 @@ loop:
 		switch directive {
 		case "annotate":
 			c.ProcessModeAnnotate(mode, args)
+		case "reload":
+			c.ProcessModeReload(mode, args)
 		case "bindkey":
 			c.ProcessModeBindkey(mode, args)
 		case "end":
@@ -153,6 +155,21 @@ func (c *configurer) ProcessModeAnnotate(mode Mode, args []string) {
 		})
 	default:
 		panic(fmt.Sprintf("Unknown annotation type: '%s'", args[0]))
+	}
+}
+
+func (c *configurer) ProcessModeReload(mode Mode, args []string) {
+	switch len(args) {
+	case 1:
+		mode.RegisterReloadWatcher(func(ctx Context) func(Pager) {
+			return func(p Pager) {
+				if rw, err := NewReloadWatcher(p, args[0], ctx); err == nil {
+					p.AddReloadWatcher(rw)
+				}
+			}
+		})
+	default:
+		panic("Expected 1 arg for 'reload'")
 	}
 }
 

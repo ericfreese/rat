@@ -90,6 +90,24 @@ end
         - Value length: Length of found value string in bytes (64-bit little-endian unsigned integer)
         - Value string: String of above-specified length (UTF-8 encoded)
 
+#### Reload Definition
+
+You can specify automatic reloading behavior for modes by using the `reload` keyword.
+
+```shell
+mode <name>
+  reload -- <cmd>
+end
+```
+
+- `cmd`: A shell command to run for the lifetime of each pager running in this mode. Each line printed to STDOUT by this process will trigger a reload of the pager. The process will be sent a SIGTERM when the pager is closed.
+
+For example, this works great with `inotifywait` (or similar for your OS) if you want to reload when certain files are modified.
+
+To reload on a consistent interval, try something like `reload -- while sleep 5; do echo; done`.
+
+Note: Reloads are debounced so that many lines printed quickly will only trigger one reload.
+
 #### Keybinding Definitions
 
 The `bindkey` keyword starts a keybinding definition.

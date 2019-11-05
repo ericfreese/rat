@@ -12,6 +12,7 @@ type Pager interface {
 	Widget
 	AddEventHandler(keyStr string, handler EventHandler)
 	Reload()
+	AddReloadWatcher(ReloadWatcher)
 	CursorUp()
 	CursorDown()
 	CursorFirstLine()
@@ -23,14 +24,15 @@ type Pager interface {
 }
 
 type pager struct {
-	title         string
-	modes         []Mode
-	ctx           Context
-	buffer        Buffer
-	scrollOffsetY int
-	cursorY       int
-	stop          chan bool
-	eventHandlers HandlerRegistry
+	title          string
+	modes          []Mode
+	ctx            Context
+	buffer         Buffer
+	scrollOffsetY  int
+	cursorY        int
+	stop           chan bool
+	eventHandlers  HandlerRegistry
+	reloadWatchers []ReloadWatcher
 
 	box        Box
 	headerBox  Box
@@ -46,6 +48,7 @@ func newPager(title string, modeNames string, ctx Context) *pager {
 
 	splitModeNames := strings.Split(modeNames, ",")
 	p.modes = make([]Mode, 0, len(splitModeNames))
+	p.reloadWatchers = make([]ReloadWatcher, 0, 2)
 
 	for _, modeName := range splitModeNames {
 		if mode, ok := modes[modeName]; ok {
@@ -73,7 +76,11 @@ func (p *pager) Stop() {
 }
 
 func (p *pager) Destroy() {
-	p.Stop()
+	for _, rw := range p.reloadWatchers {
+		rw.Stop()
+	}
+
+	p.buffer.Close()
 }
 
 func (p *pager) HandleEvent(ks []keyEvent) bool {
@@ -209,11 +216,16 @@ func (p *pager) PageDown() {
 func (p *pager) Reload() {
 }
 
+func (p *pager) AddReloadWatcher(rw ReloadWatcher) {
+	p.reloadWatchers = append(p.reloadWatchers, rw)
+}
+
 func NewReadPager(rd io.Reader, title string, modeNames string, ctx Context) Pager {
 	p := newPager(title, modeNames, ctx)
 
 	for _, mode := range p.modes {
 		mode.AddEventHandlers(ctx)(p)
+		mode.AddReloadWatcher(ctx)(p)
 	}
 
 	p.buffer = NewBuffer(rd)
@@ -234,11 +246,12 @@ func NewCmdPager(modeNames string, cmd string, ctx Context) Pager {
 	cp.cmd = cmd
 	cp.pager = newPager(cmd, modeNames, ctx)
 
+	cp.RunCommand()
+
 	for _, mode := range cp.modes {
 		mode.AddEventHandlers(ctx)(cp)
+		mode.AddReloadWatcher(ctx)(cp)
 	}
-
-	cp.RunCommand()
 
 	return cp
 }
@@ -246,6 +259,11 @@ func NewCmdPager(modeNames string, cmd string, ctx Context) Pager {
 func (cp *cmdPager) Stop() {
 	cp.command.Close()
 	cp.pager.Stop()
+}
+
+func (cp *cmdPager) Destroy() {
+	cp.command.Close()
+	cp.pager.Destroy()
 }
 
 func (cp *cmdPager) Reload() {
