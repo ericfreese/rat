@@ -11,7 +11,7 @@ var (
 )
 
 func init() {
-	xdg_config_path := os.Getenv("XDG_CONFIG_HOME")  // POSIX convention
+	xdg_config_path := os.Getenv("XDG_CONFIG_HOME") // POSIX convention
 	if xdg_config_path != "" {
 		ConfigDir = filepath.Join(xdg_config_path, "rat")
 	} else {

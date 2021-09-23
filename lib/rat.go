@@ -82,6 +82,15 @@ func Quit() {
 }
 
 func Run() {
+	// There is a bug in this code that this go routine continues to run even if
+	// termbox is closed. If a SIGWINCH is triggered while termbox is closed, a
+	// EventResize event will be triggered with width and height set to zero
+	// because the tty fd that termbox uses to get the terminal window size has
+	// been closed. Because termbox is more or less unmaintained at this point,
+	// we should probably switch to some other library. Rather than try too hard
+	// to fix the bug, just work around it for now by ignoring the reported width
+	// and height when they are zero. We can fix the underlying bug if/when we
+	// switch to the new library.
 	go func() {
 		for {
 			events <- termbox.PollEvent()
@@ -104,7 +113,13 @@ loop:
 					keyStack = nil
 				}
 			case termbox.EventResize:
-				layout(e.Width, e.Height)
+				w, h := e.Width, e.Height
+
+				if w == 0 && h == 0 {
+					w, h = termbox.Size()
+				}
+
+				layout(w, h)
 			}
 		case <-time.After(time.Second / 10):
 		}
