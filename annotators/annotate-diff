@@ -78,7 +78,7 @@ sub annotate_line {
     $to_length = 1;
   }
 
-  my $value = "$diff{header}\@\@ -$hunk_from_line,$from_length +$hunk_from_line,$to_length \@\@\n$line";
+  my $value = "$diff{header}\@\@ -$hunk_from_line,$from_length +$hunk_to_line,$to_length \@\@\n$line";
   my $value_len = length(encode('UTF-8', $value));
 
   print(
