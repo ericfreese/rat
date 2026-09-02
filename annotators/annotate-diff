@@ -1,7 +1,9 @@
 #!/usr/bin/env perl
 use strict;
 use bytes;
-use Encode 'encode';
+
+binmode(STDIN, ':raw');
+binmode(STDOUT, ':raw');
 
 my $mode = 'diff';
 
@@ -34,7 +36,7 @@ sub annotate_diff {
   return unless $mode eq 'diff';
 
   my $value = $diff{value};
-  my $value_len = length(encode('UTF-8', $value));
+  my $value_len = length($value);
 
   print(
     pack(
@@ -51,7 +53,7 @@ sub annotate_hunk {
   return unless $mode eq 'hunks';
 
   my $value = "$diff{header}$hunk{value}";
-  my $value_len = length(encode('UTF-8', $value));
+  my $value_len = length($value);
 
   print(
     pack(
@@ -79,13 +81,13 @@ sub annotate_line {
   }
 
   my $value = "$diff{header}\@\@ -$hunk_from_line,$from_length +$hunk_to_line,$to_length \@\@\n$line";
-  my $value_len = length(encode('UTF-8', $value));
+  my $value_len = length($value);
 
   print(
     pack(
       "QQQa$value_len",
       $byte_offset,
-      $byte_offset + length(encode('UTF-8', $line)),
+      $byte_offset + length($line),
       $value_len,
       $value,
     )
@@ -150,7 +152,7 @@ while (<STDIN>) {
     );
   }
 
-  $byte_offset += length(encode('UTF-8', $line));
+  $byte_offset += length($line);
 }
 
 if (%hunk) {
