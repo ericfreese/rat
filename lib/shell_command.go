@@ -40,6 +40,7 @@ func NewShellCommand(c string, ctx Context) (ShellCommand, error) {
 	sc.Reader = io.MultiReader(stdout, stderr)
 
 	err = sc.cmd.Start()
+	go func() { sc.cmd.Wait() }()
 
 	return sc, err
 }

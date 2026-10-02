@@ -280,6 +280,7 @@ func (ea *externalAnnotator) Annotate(rd io.Reader) <-chan Annotation {
 
 	go func() {
 		defer close(out)
+		defer cmd.Wait()
 
 		for {
 			start, err := ea.readUint64(stdout)
